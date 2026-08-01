@@ -1288,7 +1288,21 @@ const App = (function () {
       App.showReminder("网络已断开，数据保存在本地", "warning");
     });
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
-      navigator.serviceWorker.register("sw.js").catch(function (e) {
+      var __swRefreshing = false;
+      navigator.serviceWorker.register("sw.js").then(function (reg) {
+        // 检测到新版本 Service Worker 接管页面时，自动刷新一次，解决 iOS「刷新没变化」的问题
+        navigator.serviceWorker.addEventListener("controllerchange", function () {
+          if (__swRefreshing) return;
+          __swRefreshing = true;
+          location.reload();
+        });
+        // 后台主动检查更新（iOS 不会频繁自动查），发现新版本立即激活
+        if (reg && reg.update) {
+          setTimeout(function () {
+            try { reg.update(); } catch (e) {}
+          }, 1500);
+        }
+      }).catch(function (e) {
         console.warn("[App] SW 注册失败:", e);
       });
     }
