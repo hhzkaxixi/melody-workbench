@@ -30,12 +30,9 @@ const FIXED_NAV_ITEMS = [
   { route: "planning", label: "人生规划", icon: "planning", fixed: true },
   { route: "growth", label: "自我成长", icon: "growth", fixed: true },
   { route: "study", label: "学习板块", icon: "study", fixed: true },
-  { route: "calendar", label: "打卡日历", icon: "calendar", fixed: true },
   { route: "exercise", label: "运动锻炼", icon: "exercise", fixed: true },
   { route: "fortune", label: "运势分析", icon: "fortune", fixed: true },
-  { route: "exam", label: "考公上岸", icon: "exam", fixed: true },
   { route: "weight", label: "体重追踪", icon: "weight", fixed: true },
-  { route: "language", label: "语言学习", icon: "language", fixed: true },
   { route: "export", label: "数据管理", icon: "export", fixed: true },
 ];
 
