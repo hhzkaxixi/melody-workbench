@@ -26,6 +26,7 @@ const App = (function () {
     exam: renderExam,
     weight: renderWeight,
     language: renderLanguage,
+    inspiration: function () { return InspirationModule.render(); },
     settings: renderSettings,
   };
 

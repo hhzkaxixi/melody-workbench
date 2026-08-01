@@ -1276,3 +1276,111 @@ input[type="time"] {
   border-radius: var(--radius-sm);
   padding: 6px 10px;
 }
+
+/* ========== 灵感清单 ========== */
+.inspiration-intro .inspiration-summary {
+  margin-top: 10px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.inspiration-intro .inspiration-summary b {
+  color: var(--melodi-pink-600);
+}
+.inspiration-nudge {
+  margin: 4px 0 14px;
+  padding: 10px 14px;
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: #9a6b12;
+  line-height: 1.5;
+}
+.insp-presets {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.insp-preset-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.insp-preset-type {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  width: 56px;
+  flex: 0 0 56px;
+}
+.insp-preset-chip {
+  border: 1px dashed var(--border-light);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  transition: all .15s;
+}
+.insp-preset-chip:hover {
+  border-color: var(--melodi-pink-500);
+  color: var(--melodi-pink-600);
+  background: var(--melodi-pink-50);
+}
+.insp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.insp-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+.insp-item.done {
+  opacity: .62;
+}
+.insp-item.done .insp-item-title {
+  text-decoration: line-through;
+}
+.insp-item-main {
+  min-width: 0;
+}
+.insp-item-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.insp-item-sub {
+  margin-top: 3px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+.insp-item-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.insp-type-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+/* 窄屏：预设类型标签占满一行 */
+@media (max-width: 560px) {
+  .insp-preset-type {
+    width: 100%;
+    flex-basis: 100%;
+  }
+}
