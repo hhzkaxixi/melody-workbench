@@ -1,0 +1,190 @@
+/* ============================================
+   美乐蒂工作台 - 主题变量
+   My Melody Pink Theme
+   ============================================ */
+
+:root {
+  /* ===== 规范主色（HEX 锁定）=====
+     #FCEAF8 浅粉雾 / #F7D6E1 樱花粉 + 白色 + 浅米色辅助 */
+  --melodi-blush: #FCEAF8;   /* 主背景粉 */
+  --melodi-rose: #F7D6E1;    /* 主卡片/描边粉 */
+  --melodi-cream: #FFFBF5;   /* 辅助浅米色 */
+  --melodi-white: #FFFFFF;   /* 辅助白 */
+
+  /* 粉色色阶 - 低饱和软萌粉 */
+  --melodi-pink-50: #FCEAF8;
+  --melodi-pink-100: #F7D6E1;
+  --melodi-pink-200: #FFD0DD;
+  --melodi-pink-300: #FFB0C4;
+  --melodi-pink-400: #FF8FAB;
+  --melodi-pink-500: #FF6B95;
+  --melodi-pink-600: #E84C7A;
+  --melodi-pink-700: #C0335E;
+  --melodi-pink-800: #992848;
+  --melodi-pink-900: #7A1E3A;
+
+  /* 背景色 */
+  --bg-primary: #FCEAF8;
+  --bg-surface: #FFFFFF;
+  --bg-secondary: #FFFBF5;
+  --bg-tertiary: #F7D6E1;
+
+  /* 文字色 */
+  --text-primary: #4A2030;
+  --text-secondary: #8A5060;
+  --text-tertiary: #B88090;
+  --text-inverse: #FFFFFF;
+
+  /* 边框 */
+  --border-light: #F7D6E1;
+  --border-default: #F0C2D3;
+  --border-strong: #FF9FB5;
+
+  /* 语义色 */
+  --color-success: #4CAF7D;
+  --color-success-bg: #E8F8EF;
+  --color-warning: #F5A623;
+  --color-warning-bg: #FFF4E0;
+  --color-danger: #E85C5C;
+  --color-danger-bg: #FFE8E8;
+  --color-info: #5B9BD5;
+  --color-info-bg: #E8F2FC;
+
+  /* 精力标签色 */
+  --energy-high: #FF6B95;
+  --energy-high-bg: #FFE8EE;
+  --energy-mid: #F5A623;
+  --energy-mid-bg: #FFF4E0;
+  --energy-low: #5B9BD5;
+  --energy-low-bg: #E8F2FC;
+
+  /* 圆角 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  /* 间距 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* 字体 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-md: 15px;
+  --font-size-lg: 18px;
+  --font-size-xl: 22px;
+  --font-size-2xl: 28px;
+
+  /* 阴影 - 柔和 */
+  --shadow-sm: 0 1px 3px rgba(200, 80, 120, 0.08);
+  --shadow-md: 0 2px 8px rgba(200, 80, 120, 0.12);
+  --shadow-lg: 0 4px 16px rgba(200, 80, 120, 0.15);
+
+  /* 侧边栏宽度 */
+  --sidebar-width: 220px;
+  --topbar-height: 56px;
+
+  /* 动画 */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+}
+
+/* 重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--melodi-pink-200);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--melodi-pink-300);
+}
+
+/* 文字选择 */
+::selection {
+  background: var(--melodi-pink-200);
+  color: var(--text-primary);
+}
+
+/* 链接 */
+a {
+  color: var(--melodi-pink-600);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--melodi-pink-700);
+}
+
+/* 输入框基础 */
+input, textarea, select {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  outline: none;
+}
+
+button {
+  font-family: var(--font-sans);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* 美乐蒂装饰 - 蝴蝶结 */
+.melodi-bow {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+.melodi-bow::before,
+.melodi-bow::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  background: var(--melodi-pink-400);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  top: 3px;
+}
+.melodi-bow::before {
+  left: 0;
+  transform: rotate(-20deg);
+}
+.melodi-bow::after {
+  right: 0;
+  transform: rotate(20deg);
+}

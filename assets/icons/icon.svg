@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#FF8FAB"/>
+  <circle cx="256" cy="256" r="160" fill="#FFFFFF"/>
+  <text x="256" y="330" font-family="Arial,sans-serif" font-size="180" font-weight="700" fill="#E84C7A" text-anchor="middle">M</text>
+  <circle cx="180" cy="180" r="12" fill="#FF6B95"/>
+  <circle cx="332" cy="180" r="12" fill="#FF6B95"/>
+</svg>

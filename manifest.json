@@ -1,0 +1,21 @@
+{
+  "name": "美乐蒂工作台",
+  "short_name": "美乐蒂",
+  "description": "个人全维度管理工作台 - 适配ADHD的大女主自我管理系统",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#FF6B95",
+  "background_color": "#FFF5F7",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "lifestyle", "health"]
+}

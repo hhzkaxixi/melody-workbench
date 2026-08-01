@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="美乐蒂工作台">
+  <meta name="theme-color" content="#FF6B95">
+  <meta name="description" content="美乐蒂个人全维度管理工作台 - 适配ADHD的大女主自我管理系统">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <title>美乐蒂工作台</title>
+</head>
+<body>
+  <div id="app">
+    <!-- 侧边栏 -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">M</div>
+        <span class="sidebar-title">美乐蒂工作台</span>
+      </div>
+      <ul class="sidebar-nav" id="sidebarNav"></ul>
+      <button class="sidebar-add-btn" id="addCategoryBtn">+ 新增分类</button>
+      <div class="sidebar-footer">
+        <button class="sidebar-settings-btn" id="settingsBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>设置</span>
+        </button>
+        <div class="sync-status" id="syncStatus">
+          <span class="sync-dot local"></span>
+          <span class="sync-text">本地存储中</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 遮罩层 -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- 主区域 -->
+    <div class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="page-title" id="pageTitle">今日总览</h1>
+        <div class="topbar-right">
+          <div class="date-display" id="dateDisplay">
+            <div class="time" id="currentTime">--:--</div>
+            <div id="currentDate">--</div>
+          </div>
+        </div>
+      </header>
+
+      <main class="content" id="content">
+        <!-- 页面由 JS 动态渲染 -->
+      </main>
+    </div>
+
+    <!-- 灵感收纳框 -->
+    <div class="inspiration-fab" id="inspirationFab" title="灵感收纳">
+      <svg viewBox="0 0 24 24"><path d="M9 21c0 .5.4 1 1 1h4c.6 0 1-.5 1-1v-1H9v1zm3-19c-4 0-7 3-7 7 0 2.4 1.2 4.5 3 5.7V17c0 .5.5 1 1 1h6c.5 0 1-.5 1-1v-3.3c1.8-1.2 3-3.3 3-5.7 0-4-3-7-7-7z"/></svg>
+    </div>
+    <div class="inspiration-panel" id="inspirationPanel">
+      <div style="font-weight:600;color:var(--melodi-pink-700);font-size:var(--font-size-sm);">灵感收纳</div>
+      <textarea class="form-textarea" id="inspirationInput" placeholder="随手记下闪过的想法..." rows="3"></textarea>
+      <button class="btn btn-primary btn-sm" id="saveInspirationBtn">保存灵感</button>
+      <div class="inspiration-list" id="inspirationList"></div>
+    </div>
+
+    <!-- 番茄钟 -->
+    <div class="pomodoro-fab" id="pomodoroFab" title="番茄钟">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 3 2 5.5 4.5 6.5V18c0 .5.5 1 1 1h3c.5 0 1-.5 1-1v-2.5C17 14.5 19 12 19 9c0-4-3-7-7-7zm-1 14v-2h2v2h-2zm3.5-3.5l-1 1L12 11l-2.5 2.5-1-1L10 11H7.5l1-1H10l-1-2 2 1.5 2-1.5-1 2h2.5l-1 1H14l.5 1.5z"/></svg>
+    </div>
+    <div class="pomodoro-panel" id="pomodoroPanel">
+      <div style="font-weight:600;color:var(--melodi-pink-700);font-size:var(--font-size-sm);">自定义番茄钟</div>
+      <div class="pomodoro-display">
+        <div class="pomodoro-time" id="pomodoroTime">25:00</div>
+        <div class="pomodoro-status" id="pomodoroStatus">设置时长开始专注</div>
+      </div>
+      <div class="pomodoro-duration">
+        <span>时长</span>
+        <input type="number" id="pomodoroDuration" value="25" min="5" max="120">分钟
+      </div>
+      <div class="pomodoro-controls">
+        <button class="btn btn-primary btn-sm" id="pomodoroStartBtn">开始</button>
+        <button class="btn btn-secondary btn-sm" id="pomodoroResetBtn">重置</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <!-- Supabase JS SDK -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/umd/supabase.min.js"></script>
+  <!-- 应用脚本（加载顺序：基础库 → 支撑模块 → 页面模块 → 路由） -->
+  <script src="js/db.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/widget-data.js"></script>
+  <script src="js/sidebar.js"></script>
+  <!-- 批次2 支撑模块：打卡日历 / 饮食识别 / ADHD 专注 / 数据导出 -->
+  <script src="js/calendar.js"></script>
+  <script src="js/food-vision.js"></script>
+  <script src="js/adhd.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/modules/daily.js"></script>
+  <script src="js/modules/growth.js"></script>
+  <script src="js/modules/body.js"></script>
+  <script src="js/modules/study.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+/* ============================================
+   美乐蒂工作台 - ADHD 专项样式
+   专注模式 / 倒计时 / 撒花奖励 / Toast
+   ============================================ */
+
+/* ===== Toast 轻提示 ===== */
+.adhd-toast-box {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  width: max-content;
+  max-width: min(92vw, 420px);
+}
+
+.adhd-toast {
+  padding: 11px 18px;
+  border-radius: var(--radius-full);
+  background: var(--melodi-white);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(200, 80, 120, 0.22);
+  border: 1.5px solid var(--melodi-rose);
+  animation: toastIn 0.32s cubic-bezier(0.2, 1.2, 0.4, 1);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.adhd-toast.out {
+  animation: toastOut 0.45s ease forwards;
+}
+
+.adhd-toast-success {
+  border-color: var(--color-success);
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--color-success-bg) 100%);
+}
+
+.adhd-toast-warning {
+  border-color: var(--color-warning);
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--color-warning-bg) 100%);
+}
+
+.adhd-toast-danger {
+  border-color: var(--color-danger);
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--color-danger-bg) 100%);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-14px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-10px); }
+}
+
+/* ===== 撒花奖励 ===== */
+.adhd-confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10000;
+  overflow: hidden;
+}
+
+.adhd-confetti-piece {
+  position: fixed;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  opacity: 0;
+  animation: confettiFly 1.25s cubic-bezier(0.15, 0.8, 0.4, 1) forwards;
+}
+
+@keyframes confettiFly {
+  0%   { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(420deg) scale(0.4); }
+}
+
+/* ===== 专注模式全屏遮罩 ===== */
+body.focus-locked {
+  overflow: hidden;
+}
+
+.focus-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #FCEAF8 0%, #F7D6E1 55%, #FFE3EE 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.focus-overlay.show {
+  display: flex;
+  animation: focusIn 0.4s ease;
+}
+
+@keyframes focusIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.focus-inner {
+  text-align: center;
+  padding: var(--space-lg);
+  max-width: 460px;
+  width: 100%;
+}
+
+/* 呼吸圆环：给注意力一个视觉锚点 */
+.focus-breath {
+  width: 132px;
+  height: 132px;
+  margin: 0 auto var(--space-lg);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: breathe 4.2s ease-in-out infinite;
+  box-shadow: 0 0 0 12px rgba(255, 255, 255, 0.28);
+}
+
+.focus-breath-core {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, var(--melodi-pink-300), var(--melodi-pink-500));
+  box-shadow: 0 6px 22px rgba(232, 76, 122, 0.32);
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.13); }
+}
+
+.focus-overlay.paused .focus-breath {
+  animation-play-state: paused;
+  opacity: 0.55;
+}
+
+.focus-label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 3px;
+  color: var(--melodi-pink-600);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.focus-task {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+  word-break: break-all;
+  line-height: 1.35;
+}
+
+.focus-countdown {
+  font-size: 62px;
+  font-weight: 800;
+  color: var(--melodi-pink-700);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+  line-height: 1.1;
+  margin-bottom: var(--space-md);
+}
+
+.focus-overlay.urgent .focus-countdown {
+  color: var(--color-danger);
+  animation: urgentPulse 1s ease-in-out infinite;
+}
+
+@keyframes urgentPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.06); }
+}
+
+.focus-progress {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-md);
+}
+
+.focus-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--melodi-pink-400), var(--melodi-pink-600));
+  border-radius: var(--radius-full);
+  transition: width 1s linear;
+}
+
+.focus-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
+  line-height: 1.6;
+}
+
+.focus-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.focus-actions .btn {
+  min-width: 86px;
+}
+
+/* ===== 角落倒计时胶囊 ===== */
+.countdown-box {
+  position: fixed;
+  right: 16px;
+  bottom: 150px;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.countdown-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--melodi-white);
+  border: 1.5px solid var(--melodi-rose);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-xs);
+  max-width: 240px;
+}
+
+.countdown-chip-name {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.countdown-chip-time {
+  font-weight: 700;
+  color: var(--melodi-pink-700);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-sm);
+}
+
+.countdown-chip.urgent {
+  border-color: var(--color-danger);
+  animation: chipShake 1.4s ease-in-out infinite;
+}
+
+.countdown-chip.urgent .countdown-chip-time {
+  color: var(--color-danger);
+}
+
+@keyframes chipShake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-2px); }
+  75%      { transform: translateX(2px); }
+}
+
+.countdown-chip-close {
+  color: var(--text-tertiary);
+  font-size: 17px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.countdown-chip-close:hover {
+  color: var(--color-danger);
+}
+
+/* ===== 5分钟启动按钮 ===== */
+.btn-quickstart {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--melodi-pink-400), var(--melodi-pink-600));
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(232, 76, 122, 0.28);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn-quickstart:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(232, 76, 122, 0.36);
+}
+
+.btn-quickstart:active {
+  transform: scale(0.96);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: var(--font-size-sm);
+}
+
+.btn-ghost:hover {
+  background: var(--melodi-blush);
+  color: var(--melodi-pink-700);
+}
+
+/* ===== 完成时的卡片弹跳反馈 ===== */
+@keyframes popDone {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.pop-done {
+  animation: popDone 0.42s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .focus-countdown { font-size: 50px; }
+  .focus-breath { width: 108px; height: 108px; }
+  .focus-breath-core { width: 60px; height: 60px; }
+  .countdown-box { bottom: 210px; right: 12px; }
+  .countdown-chip { max-width: 190px; }
+}

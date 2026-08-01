@@ -1,0 +1,6 @@
+# 开发临时文件（不进仓库）
+__smoke.js
+gen_icon.py
+node_modules/
+.DS_Store
+*.log

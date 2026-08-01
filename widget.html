@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="美乐蒂组件">
+  <meta name="theme-color" content="#FF6B95">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/theme.css">
+  <title>美乐蒂桌面组件</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", sans-serif;
+      background: linear-gradient(135deg, #FFF5F8, #FFE8F0);
+      min-height: 100vh;
+      padding: 16px;
+      color: #4A3340;
+    }
+    .melodi-widget {
+      max-width: 400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .widget-section {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 4px 20px rgba(255, 107, 149, 0.1);
+    }
+    .widget-time { text-align: center; }
+    .widget-time-main {
+      font-size: 48px;
+      font-weight: 700;
+      color: #FF6B95;
+      letter-spacing: 2px;
+      line-height: 1.2;
+    }
+    .widget-time-sub {
+      font-size: 14px;
+      color: #8B7765;
+      margin-top: 4px;
+    }
+    .widget-checkin-header {
+      font-size: 14px;
+      font-weight: 600;
+      color: #FF6B95;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .widget-completion {
+      background: #FFE8F0;
+      color: #FF6B95;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+    .widget-checkin-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .widget-checkin-item {
+      text-align: center;
+      padding: 8px 4px;
+      border-radius: 12px;
+      background: #FFF5F8;
+      transition: all 0.3s;
+    }
+    .widget-checkin-item.done {
+      background: #FF6B95;
+    }
+    .widget-checkin-item.done .widget-checkin-dot,
+    .widget-checkin-item.done .widget-checkin-label,
+    .widget-checkin-item.done .widget-checkin-detail {
+      color: #fff;
+    }
+    .widget-checkin-dot {
+      font-size: 16px;
+      color: #FFB3C9;
+    }
+    .widget-checkin-label {
+      font-size: 11px;
+      color: #4A3340;
+      margin-top: 2px;
+    }
+    .widget-checkin-detail {
+      font-size: 10px;
+      color: #B0A0A0;
+      margin-top: 1px;
+    }
+    .widget-progress {
+      height: 6px;
+      background: #FFE8F0;
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .widget-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #FFB3C9, #FF6B95);
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    .widget-progress-text {
+      text-align: center;
+      font-size: 11px;
+      color: #B0A0A0;
+      margin-top: 4px;
+    }
+    .widget-quote {
+      text-align: center;
+      padding: 20px 16px;
+    }
+    .widget-quote-cn {
+      font-size: 15px;
+      font-weight: 600;
+      color: #4A3340;
+      line-height: 1.6;
+    }
+    .widget-quote-en {
+      font-size: 12px;
+      color: #B0A0A0;
+      margin-top: 8px;
+      font-style: italic;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="widgetContainer"></div>
+  <script src="js/db.js"></script>
+  <script src="js/widget-data.js"></script>
+  <script>
+    WidgetData.startAutoRefresh("widgetContainer");
+  </script>
+</body>
+</html>
