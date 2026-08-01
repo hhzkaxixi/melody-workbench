@@ -1201,6 +1201,12 @@ input[type="time"] {
 .drink-chip:active {
   transform: scale(0.96);
 }
+.drink-chip.selected {
+  border-color: var(--melodi-pink-600);
+  background: var(--melodi-pink-100);
+  color: var(--melodi-pink-700);
+  box-shadow: 0 0 0 2px var(--melodi-pink-200);
+}
 .dc-icon {
   font-size: 1rem;
   line-height: 1;
@@ -1208,9 +1214,32 @@ input[type="time"] {
 .dc-name {
   font-weight: 600;
 }
-.dc-vol {
+.water-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.water-vol-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.water-vol-input:focus {
+  border-color: var(--melodi-pink-500);
+}
+.water-vol-input::-webkit-input-placeholder {
   color: var(--text-tertiary);
-  font-size: 0.7rem;
+}
+.water-vol-input::-moz-placeholder {
+  color: var(--text-tertiary);
 }
 
 .water-log {

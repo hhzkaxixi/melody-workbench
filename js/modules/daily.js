@@ -7,16 +7,17 @@ const DailyModule = (function () {
   var settings = null;
   var today = "";
 
-  // 饮品类型（参考《日常养成方案》每日饮品清单，按标准份量一键记录）
+  // 饮品类型（参考《日常养成方案》每日饮品清单；仅作选择，份量自定义）
   var DRINK_TYPES = [
-    { key: "water", name: "温水", icon: "💧", vol: 250 },
-    { key: "soymilk", name: "豆浆", icon: "🥛", vol: 250 },
-    { key: "oolong", name: "荔枝乌龙", icon: "🍵", vol: 250 },
-    { key: "jasmine", name: "茉莉绿茶", icon: "🌿", vol: 250 },
-    { key: "oatmilk", name: "乌龙燕麦奶", icon: "🥤", vol: 300 },
-    { key: "coffee", name: "黑咖啡", icon: "☕", vol: 200 },
-    { key: "lemonoil", name: "橄榄油柠檬", icon: "🍋", vol: 50 }
+    { key: "water", name: "温水", icon: "💧" },
+    { key: "soymilk", name: "豆浆", icon: "🥛" },
+    { key: "oolong", name: "荔枝乌龙", icon: "🍵" },
+    { key: "jasmine", name: "茉莉绿茶", icon: "🌿" },
+    { key: "oatmilk", name: "乌龙燕麦奶", icon: "🥤" },
+    { key: "coffee", name: "黑咖啡", icon: "☕" },
+    { key: "lemonoil", name: "橄榄油柠檬", icon: "🍋" }
   ];
+  var selectedDrinkKey = null;
 
   function render() {
     settings = MelodiDB.getSettings();
@@ -78,11 +79,15 @@ const DailyModule = (function () {
     html += '<button class="btn btn-secondary btn-sm" data-water="1000">+1L</button>';
     html += '<button class="btn btn-ghost btn-sm" data-water="reset">重置</button>';
     html += "</div></div>";
-    html += '<div class="water-chips-label">选择饮品（点击按标准份量记录）</div>';
-    html += '<div class="water-chips">';
+    html += '<div class="water-chips-label">选择饮品（先点选，再填份量记录）</div>';
+    html += '<div class="water-chips" id="drinkChips">';
     DRINK_TYPES.forEach(function (d) {
-      html += '<button class="drink-chip" data-drink="' + d.key + '"><span class="dc-icon">' + d.icon + '</span><span class="dc-name">' + d.name + '</span><span class="dc-vol">' + d.vol + 'ml</span></button>';
+      html += '<button class="drink-chip" data-drink="' + d.key + '" type="button"><span class="dc-icon">' + d.icon + '</span><span class="dc-name">' + d.name + '</span></button>';
     });
+    html += '</div>';
+    html += '<div class="water-add-row">';
+    html += '<input class="water-vol-input" id="drinkVol" type="number" min="1" step="50" inputmode="numeric" placeholder="份量(ml)" />';
+    html += '<button class="btn btn-primary btn-sm" id="drinkRecord">记录</button>';
     html += '</div>';
     html += '<div class="progress-bar"><div class="progress-fill' + (waterPct >= 100 ? " complete" : "") + '" id="waterFill" style="width:' + waterPct + '%"></div></div>';
     html += '<div class="progress-label" id="waterLabel"><span>' + (waterAmount / 1000).toFixed(2) + "L / " + (settings.waterTarget / 1000).toFixed(1) + "L</span><span>" + (waterPct >= 100 ? "已达标" : Math.round(waterPct) + "%") + "</span></div>";
@@ -367,12 +372,26 @@ const DailyModule = (function () {
 
   /* === 饮水事件 === */
   function setupWaterEvents() {
-    // 饮品类型一键记录
+    // 饮品先点选（不自动记录，仅选中高亮）
     document.querySelectorAll("[data-drink]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        addDrink(this.dataset.drink);
+        selectedDrinkKey = this.dataset.drink;
+        document.querySelectorAll("[data-drink]").forEach(function (b) {
+          b.classList.toggle("selected", b === btn);
+        });
+        var input = document.getElementById("drinkVol");
+        if (input && !input.value) input.focus();
       });
     });
+    // 记录选中饮品 + 自定义份量
+    var recBtn = document.getElementById("drinkRecord");
+    if (recBtn) recBtn.addEventListener("click", recordDrinkCustom);
+    var volInput = document.getElementById("drinkVol");
+    if (volInput) {
+      volInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") recordDrinkCustom();
+      });
+    }
     // 快捷加白水 / 重置
     document.querySelectorAll("[data-water]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -394,14 +413,22 @@ const DailyModule = (function () {
     }
   }
 
-  function addDrink(key) {
-    var def = null;
-    for (var i = 0; i < DRINK_TYPES.length; i++) {
-      if (DRINK_TYPES[i].key === key) { def = DRINK_TYPES[i]; break; }
+  function recordDrinkCustom() {
+    var input = document.getElementById("drinkVol");
+    var vol = input ? parseInt(input.value, 10) : 0;
+    if (!vol || vol <= 0) {
+      App.showReminder("请输入份量(ml)", "warning");
+      if (input) input.focus();
+      return;
     }
-    if (!def) return;
-    addWater(def.vol, def);
-    App.showReminder(def.name + " +" + def.vol + "ml", "success");
+    var def = null;
+    if (selectedDrinkKey) {
+      for (var i = 0; i < DRINK_TYPES.length; i++) {
+        if (DRINK_TYPES[i].key === selectedDrinkKey) { def = DRINK_TYPES[i]; break; }
+      }
+    }
+    addWater(vol, def);
+    if (input) input.value = "";
   }
 
   function addWater(vol, def) {
