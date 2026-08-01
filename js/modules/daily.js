@@ -7,6 +7,17 @@ const DailyModule = (function () {
   var settings = null;
   var today = "";
 
+  // 饮品类型（参考《日常养成方案》每日饮品清单，按标准份量一键记录）
+  var DRINK_TYPES = [
+    { key: "water", name: "温水", icon: "💧", vol: 250 },
+    { key: "soymilk", name: "豆浆", icon: "🥛", vol: 250 },
+    { key: "oolong", name: "荔枝乌龙", icon: "🍵", vol: 250 },
+    { key: "jasmine", name: "茉莉绿茶", icon: "🌿", vol: 250 },
+    { key: "oatmilk", name: "乌龙燕麦奶", icon: "🥤", vol: 300 },
+    { key: "coffee", name: "黑咖啡", icon: "☕", vol: 200 },
+    { key: "lemonoil", name: "橄榄油柠檬", icon: "🍋", vol: 50 }
+  ];
+
   function render() {
     settings = MelodiDB.getSettings();
     today = MelodiDB.todayKey();
@@ -59,6 +70,7 @@ const DailyModule = (function () {
     html += renderQuickCheckin();
 
     // 饮水进度
+    var waterLogHtml = renderWaterLogHtml(sleepData.waterLog);
     html += '<div class="card">';
     html += '<div class="card-header"><div class="card-title">饮水量</div>';
     html += '<div class="flex gap-sm">';
@@ -66,8 +78,16 @@ const DailyModule = (function () {
     html += '<button class="btn btn-secondary btn-sm" data-water="1000">+1L</button>';
     html += '<button class="btn btn-ghost btn-sm" data-water="reset">重置</button>';
     html += "</div></div>";
+    html += '<div class="water-chips-label">选择饮品（点击按标准份量记录）</div>';
+    html += '<div class="water-chips">';
+    DRINK_TYPES.forEach(function (d) {
+      html += '<button class="drink-chip" data-drink="' + d.key + '"><span class="dc-icon">' + d.icon + '</span><span class="dc-name">' + d.name + '</span><span class="dc-vol">' + d.vol + 'ml</span></button>';
+    });
+    html += '</div>';
     html += '<div class="progress-bar"><div class="progress-fill' + (waterPct >= 100 ? " complete" : "") + '" id="waterFill" style="width:' + waterPct + '%"></div></div>';
     html += '<div class="progress-label" id="waterLabel"><span>' + (waterAmount / 1000).toFixed(2) + "L / " + (settings.waterTarget / 1000).toFixed(1) + "L</span><span>" + (waterPct >= 100 ? "已达标" : Math.round(waterPct) + "%") + "</span></div>";
+    html += '<div id="waterLog" class="water-log">' + waterLogHtml + '</div>';
+    html += '<div class="water-tip">💡 每天 ≥2000ml，茶咖为辅；睡前 1.5 小时少喝，避免起夜</div>';
     html += "</div>";
 
     // 饮食记录
@@ -347,20 +367,94 @@ const DailyModule = (function () {
 
   /* === 饮水事件 === */
   function setupWaterEvents() {
+    // 饮品类型一键记录
+    document.querySelectorAll("[data-drink]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        addDrink(this.dataset.drink);
+      });
+    });
+    // 快捷加白水 / 重置
     document.querySelectorAll("[data-water]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var action = this.dataset.water;
-        var data = MelodiDB.getDayData("sleep") || {};
-        var current = data.water || 0;
         if (action === "reset") {
-          data.water = 0;
+          resetWater();
         } else {
-          data.water = current + parseInt(action);
+          addWater(parseInt(action, 10));
         }
-        MelodiDB.setDayData("sleep", data);
-        updateWaterUI();
       });
     });
+    // 删除某条饮水记录（事件委托，容器持久）
+    var logContainer = document.getElementById("waterLog");
+    if (logContainer) {
+      logContainer.addEventListener("click", function (e) {
+        var rm = e.target.closest("[data-rm-drink]");
+        if (rm) removeDrink(parseInt(rm.dataset.rmDrink, 10));
+      });
+    }
+  }
+
+  function addDrink(key) {
+    var def = null;
+    for (var i = 0; i < DRINK_TYPES.length; i++) {
+      if (DRINK_TYPES[i].key === key) { def = DRINK_TYPES[i]; break; }
+    }
+    if (!def) return;
+    addWater(def.vol, def);
+    App.showReminder(def.name + " +" + def.vol + "ml", "success");
+  }
+
+  function addWater(vol, def) {
+    var data = MelodiDB.getDayData("sleep") || {};
+    data.water = (data.water || 0) + vol;
+    if (!data.waterLog) data.waterLog = [];
+    data.waterLog.push({
+      type: def ? def.key : "water",
+      name: def ? def.name : "白水",
+      icon: def ? def.icon : "💧",
+      vol: vol,
+      ts: Date.now()
+    });
+    MelodiDB.setDayData("sleep", data);
+    updateWaterUI();
+  }
+
+  function removeDrink(idx) {
+    var data = MelodiDB.getDayData("sleep") || {};
+    if (!data.waterLog || !data.waterLog[idx]) return;
+    data.water -= data.waterLog[idx].vol;
+    if (data.water < 0) data.water = 0;
+    data.waterLog.splice(idx, 1);
+    MelodiDB.setDayData("sleep", data);
+    updateWaterUI();
+  }
+
+  function resetWater() {
+    var data = MelodiDB.getDayData("sleep") || {};
+    data.water = 0;
+    data.waterLog = [];
+    MelodiDB.setDayData("sleep", data);
+    updateWaterUI();
+    App.showReminder("饮水量已重置", "warning");
+  }
+
+  function renderWaterLogHtml(log) {
+    if (!log || !log.length) {
+      return '<div class="water-log-empty">还没有记录，点上面的饮品开始打卡 💧</div>';
+    }
+    var h = '<div class="water-log-list">';
+    for (var i = 0; i < log.length; i++) {
+      var e = log[i];
+      h += '<div class="water-log-item"><span class="water-log-icon">' + e.icon + '</span>'
+        + '<span class="water-log-name">' + e.name + '</span>'
+        + '<span class="water-log-vol">+' + e.vol + 'ml</span>'
+        + '<button class="water-log-rm" data-rm-drink="' + i + '" title="删除">✕</button></div>';
+    }
+    h += '</div>';
+    var total = 0;
+    for (var j = 0; j < log.length; j++) total += log[j].vol;
+    h += '<div class="water-log-sum">已记录 ' + log.length + ' 次，合计 ' + (total / 1000).toFixed(2) + 'L</div>';
+    return h;
   }
 
   function updateWaterUI() {
@@ -380,6 +474,10 @@ const DailyModule = (function () {
     if (stat) {
       var v = stat.querySelector(".stat-value");
       if (v) v.textContent = (waterAmount / 1000).toFixed(1) + "L";
+    }
+    var logEl = document.getElementById("waterLog");
+    if (logEl) {
+      logEl.innerHTML = renderWaterLogHtml(data.waterLog);
     }
   }
 

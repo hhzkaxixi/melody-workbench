@@ -1167,3 +1167,112 @@ input[type="time"] {
     grid-template-columns: 1fr;
   }
 }
+
+/* ========== 饮水量 · 饮品类型 ========== */
+.water-chips-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  margin: var(--space-sm) 0 6px;
+}
+.water-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.drink-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.drink-chip:hover {
+  border-color: var(--melodi-pink-400);
+  background: var(--melodi-pink-50);
+  color: var(--melodi-pink-700);
+}
+.drink-chip:active {
+  transform: scale(0.96);
+}
+.dc-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+.dc-name {
+  font-weight: 600;
+}
+.dc-vol {
+  color: var(--text-tertiary);
+  font-size: 0.7rem;
+}
+
+.water-log {
+  margin-top: var(--space-sm);
+}
+.water-log-empty {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  padding: 6px 0;
+}
+.water-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.water-log-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--melodi-pink-50);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+.water-log-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+.water-log-name {
+  font-weight: 600;
+  color: var(--melodi-pink-700);
+}
+.water-log-vol {
+  color: var(--text-tertiary);
+}
+.water-log-rm {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+}
+.water-log-rm:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+.water-log-sum {
+  margin-top: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-align: right;
+}
+.water-tip {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
