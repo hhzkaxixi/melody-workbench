@@ -1513,3 +1513,42 @@ input[type="time"] {
   color: var(--text-secondary);
   white-space: nowrap;
 }
+
+/* 规划-今日任务同步清单（与今日总览四象限实时同步） */
+.plan-task-group-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+.plan-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.plan-task-text {
+  flex: 1;
+}
+.plan-task.done .plan-task-text {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}
+.plan-task-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--melodi-pink-500);
+  cursor: pointer;
+}
+.archive-day-label {
+  font-size: var(--font-size-xs);
+  color: var(--melodi-pink-600);
+  font-weight: 600;
+  margin: 10px 0 2px;
+}
+.history-collapsed .history-content {
+  display: none;
+}

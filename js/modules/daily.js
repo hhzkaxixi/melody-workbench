@@ -888,8 +888,33 @@ const DailyModule = (function () {
     });
   }
 
+  /* 每日交接：把非今天的任务归档到 taskArchive（按日期分桶），保持今日列表干净（每日更新） */
+  function archiveYesterdayTasks() {
+    var todayKey = MelodiDB.todayKey();
+    var lastArchive = MelodiDB.get("taskArchiveDate", null);
+    if (lastArchive === todayKey) return; // 今天已归档过
+    var all = MelodiDB.getList("tasks");
+    if (all.length === 0) { MelodiDB.set("taskArchiveDate", todayKey); return; }
+    var archive = MelodiDB.get("taskArchive", {});
+    var moved = false;
+    all.forEach(function (t) {
+      var d = t.date || todayKey;
+      if (d !== todayKey) {
+        if (!archive[d]) archive[d] = [];
+        archive[d].push(t);
+        moved = true;
+      }
+    });
+    if (moved) MelodiDB.set("taskArchive", archive);
+    // 今日列表只保留今天的任务
+    var active = all.filter(function (t) { return (t.date || todayKey) === todayKey; });
+    MelodiDB.set("list:tasks", active);
+    MelodiDB.set("taskArchiveDate", todayKey);
+  }
+
   /* === 任务事件 === */
   function setupTaskEvents() {
+    archiveYesterdayTasks();
     var addBtn = document.getElementById("addTaskBtn");
     var taskInput = document.getElementById("taskInput");
     if (addBtn && taskInput) {
@@ -1120,33 +1145,36 @@ const DailyModule = (function () {
     var todayKey = MelodiDB.todayKey();
     var allTasks = MelodiDB.getList("tasks");
     var doneToday = allTasks.filter(function (t) { return t.done && (!t.date || t.date === todayKey); });
-    var donePast = allTasks.filter(function (t) { return t.done && t.date && t.date !== todayKey; });
+
+    // 归档里的往日任务（含未完成，按日期分组展示）
+    var archive = MelodiDB.get("taskArchive", {});
+    var archiveDates = Object.keys(archive).sort().reverse().slice(0, 14);
 
     var html = "";
     if (doneToday.length > 0) {
-      html += '<div class="history-header" id="todayHistoryHeader"><span class="history-arrow">&#9658;</span> 今日已完成 (' + doneToday.length + ")</div>";
-      html += '<div class="history-content" id="todayHistoryContent">';
-      html += doneToday.map(function (t) {
-        return '<div class="task-item done"><div class="task-checkbox checked"><svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5l-1.4 1.4l4.9 4.9l11-11l-1.4-1.4z" fill="white"/></svg></div><span class="task-text">' + escapeHtml(t.text) + "</span></div>";
-      }).join("");
+      html += '<div class="history-header open" id="todayHistoryHeader"><span class="history-arrow">&#9658;</span> 今日已完成 (' + doneToday.length + ")</div>";
+      html += '<div class="history-content open" id="todayHistoryContent">';
+      html += doneToday.map(function (t) { return renderDoneHistoryItem(t, false); }).join("");
       html += "</div>";
     }
-    if (donePast.length > 0) {
-      html += '<div class="history-header" id="pastHistoryHeader"><span class="history-arrow">&#9658;</span> 往期已完成 (' + donePast.length + ")</div>";
-      html += '<div class="history-content" id="pastHistoryContent">';
-      html += donePast.map(function (t) {
-        return '<div class="task-item done"><div class="task-checkbox checked"><svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5l-1.4 1.4l4.9 4.9l11-11l-1.4-1.4z" fill="white"/></svg></div><span class="task-text">' + escapeHtml(t.text) + '</span><span class="text-muted" style="font-size:var(--font-size-xs);">' + (t.date || "") + "</span></div>";
-      }).join("");
+    if (archiveDates.length > 0) {
+      html += '<div class="history-header" id="archiveHistoryHeader"><span class="history-arrow">&#9658;</span> 往日归档 (' + archiveDates.length + " 天)</div>";
+      html += '<div class="history-content" id="archiveHistoryContent">';
+      archiveDates.forEach(function (d) {
+        var items = archive[d] || [];
+        html += '<div class="archive-day-label">' + escapeHtml(d) + "</div>";
+        html += items.map(function (t) { return renderDoneHistoryItem(t, true); }).join("");
+      });
       html += "</div>";
     }
-    if (doneToday.length === 0 && donePast.length === 0) {
+    if (doneToday.length === 0 && archiveDates.length === 0) {
       container.innerHTML = "";
       return;
     }
-    html = '<div style="margin-bottom:8px;"><button class="btn btn-ghost btn-sm" id="hideHistoryBtn">批量隐藏已完成项</button></div>' + html;
+    html = '<div style="margin-bottom:8px;"><button class="btn btn-ghost btn-sm" id="toggleHistoryBtn">收起已完成项</button></div>' + html;
     container.innerHTML = html;
 
-    ["todayHistoryHeader", "pastHistoryHeader"].forEach(function (id) {
+    ["todayHistoryHeader", "archiveHistoryHeader"].forEach(function (id) {
       var header = document.getElementById(id);
       if (header) {
         header.addEventListener("click", function () {
@@ -1157,17 +1185,24 @@ const DailyModule = (function () {
       }
     });
 
-    var hideBtn = document.getElementById("hideHistoryBtn");
-    if (hideBtn) {
-      hideBtn.addEventListener("click", function () {
-        var allTasks = MelodiDB.getList("tasks");
-        var undone = allTasks.filter(function (t) { return !t.done; });
-        MelodiDB.set("list:tasks", undone);
-        renderQuadrants();
-        renderTaskHistory();
-        App.showReminder("已清空已完成项", "success");
+    var toggleBtn = document.getElementById("toggleHistoryBtn");
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", function () {
+        var collapsed = container.classList.toggle("history-collapsed");
+        this.textContent = collapsed ? "展开已完成项" : "收起已完成项";
       });
     }
+  }
+
+  /* 历史/归档里的单条任务：完成划线，未完成的归档项正常显示 */
+  function renderDoneHistoryItem(t, isArchive) {
+    var done = !!t.done;
+    var cls = "task-item" + (done ? " done" : "");
+    var cb = done
+      ? '<div class="task-checkbox checked"><svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5l-1.4 1.4l4.9 4.9l11-11l-1.4-1.4z" fill="white"/></svg></div>'
+      : '<div class="task-checkbox"></div>';
+    var dateTag = (isArchive && t.date) ? '<span class="text-muted" style="font-size:var(--font-size-xs);">' + escapeHtml(t.date) + "</span>" : "";
+    return '<div class="' + cls + '">' + cb + '<span class="task-text">' + escapeHtml(t.text) + "</span>" + dateTag + "</div>";
   }
 
   /* ===== 图表渲染 ===== */
@@ -1264,5 +1299,5 @@ const DailyModule = (function () {
     reader.readAsDataURL(file);
   }
 
-  return { render: render };
+  return { render: render, archiveYesterdayTasks: archiveYesterdayTasks };
 })();

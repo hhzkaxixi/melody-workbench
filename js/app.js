@@ -121,8 +121,7 @@ const App = (function () {
       { key: "year", label: "年度总目标", placeholder: "写下今年的核心目标（每年1月1日开启新篇）..." },
       { key: "month", label: "月度计划", placeholder: "本月拆分计划（每月1日开启）..." },
       { key: "week", label: "本周细分", placeholder: "本周具体任务（每周一开启）..." },
-      { key: "day", label: "今日落地", placeholder: "今天要做的具体事..." },
-      { key: "review", label: "复盘备注", placeholder: "随时记录复盘思考，可随时增删修改..." },
+      { key: "day", label: "今日安排", placeholder: "今天要做的具体事..." },
     ];
 
     // 一次性迁移：旧版按天存储的计划迁移到当前周期键，避免丢失已填内容
@@ -140,7 +139,7 @@ const App = (function () {
 
     var html = '<div class="card" style="background:linear-gradient(135deg,var(--melodi-pink-100),var(--melodi-pink-50));border:none;margin-bottom:var(--space-md);">';
     html += '<div style="font-size:var(--font-size-md);font-weight:600;color:var(--melodi-pink-700);">四级时间规划闭环</div>';
-    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">年度总目标 → 月度拆分 → 每周细分 → 每日落地；复盘备注随时补充</div>';
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">年度总目标 → 月度拆分 → 每周细分 → 每日安排；每个周期下分别做复盘</div>';
     html += "</div>";
 
     html += '<div class="card"><div class="card-header"><div class="card-title">规划详情</div></div>';
@@ -152,39 +151,106 @@ const App = (function () {
 
     levels.forEach(function (l, i) {
       var saved = getPlanCurrent(l.key) || {};
-      var isReview = l.key === "review";
       var pk = planPeriodKey(l.key);
+      var isDay = l.key === "day";
       html += '<div class="tab-panel' + (i === 0 ? " active" : "") + '" data-panel="plan_' + l.key + '">';
 
       // 周期提示
       html += '<div style="font-size:var(--font-size-xs);color:var(--melodi-pink-600);margin-bottom:8px;">📅 ' + planPeriodLabel(l.key, pk) + "</div>";
 
-      html += '<div class="form-group"><label class="form-label">' + l.label + (isReview ? "" : "内容") + "</label>";
+      // 计划内容
+      html += '<div class="form-group"><label class="form-label">' + l.label + "内容</label>";
       html += '<textarea class="form-textarea" id="plan_' + l.key + '" rows="6" placeholder="' + l.placeholder + '">' + escapeHtml(saved.content || "") + "</textarea></div>";
 
-      if (isReview && saved._updatedAt) {
+      if (saved._updatedAt) {
         html += '<div style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin:-4px 0 8px;">最后更新：' + formatPlanTime(saved._updatedAt) + "</div>";
       }
 
       html += '<div class="flex gap-sm">';
       html += '<button class="btn btn-primary btn-sm" data-save="' + l.key + '">保存</button>';
-      if (!isReview) {
-        if (!saved.content) {
-          html += '<button class="btn btn-ghost btn-sm" data-copy="' + l.key + '">复制上期</button>';
-        }
-        html += '<button class="btn btn-ghost btn-sm" data-view-history="' + l.key + '">查看往期</button>';
+      if (!saved.content) {
+        html += '<button class="btn btn-ghost btn-sm" data-copy="' + l.key + '">复制上期</button>';
       }
+      html += '<button class="btn btn-ghost btn-sm" data-view-history="' + l.key + '">查看往期</button>';
       html += "</div>";
 
-      if (!isReview) {
-        html += '<div id="history_' + l.key + '" style="margin-top:12px;"></div>';
+      html += '<div id="history_' + l.key + '" style="margin-top:12px;"></div>';
+
+      // 今日安排：与今日总览四象限任务实时同步（完成划线、双向勾选）
+      if (isDay) {
+        html += '<div class="section-divider"><span class="section-divider-label">今日任务（与今日总览同步）</span></div>';
+        html += '<div id="planDayTasks">' + renderPlanDayTasks() + "</div>";
       }
+
+      // 各周期分别复盘
+      html += '<div class="section-divider"><span class="section-divider-label">' + (PLAN_REVIEW_LABEL[l.key] || "复盘") + "</span></div>";
+      html += '<div class="form-group"><label class="form-label">' + (PLAN_REVIEW_LABEL[l.key] || "复盘") + "内容</label>";
+      html += '<textarea class="form-textarea" id="plan_' + l.key + '_review" rows="4" placeholder="对这个' + l.label + '做个复盘：做到了什么、卡在哪、下次怎么调...">' + escapeHtml(saved.review || "") + "</textarea></div>";
+      if (saved._reviewUpdatedAt) {
+        html += '<div style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin:-4px 0 8px;">复盘最后更新：' + formatPlanTime(saved._reviewUpdatedAt) + "</div>";
+      }
+      html += '<button class="btn btn-secondary btn-sm" data-save-review="' + l.key + '">保存复盘</button>';
+
       html += "</div>";
     });
     html += "</div>";
 
     setTimeout(setupPlanningEvents, 0);
     return html;
+  }
+
+  var PLAN_QUAD_LABEL = { q1: "重要紧急", q2: "重要不紧急", q3: "紧急不重要", q4: "不重要不紧急" };
+  var PLAN_REVIEW_LABEL = { year: "年度复盘", month: "月度复盘", week: "本周复盘", day: "今日复盘" };
+
+  /* 今日安排面板：渲染今日总览四象限任务（实时同步，完成划线） */
+  function renderPlanDayTasks() {
+    var todayKey = MelodiDB.todayKey();
+    var tasks = MelodiDB.getList("tasks").filter(function (t) { return (!t.date || t.date === todayKey); });
+    if (tasks.length === 0) {
+      return '<div class="empty-state-text" style="padding:8px 0;">今日总览还没有任务，去「今日总览」四象限添加吧</div>';
+    }
+    var groups = { q1: [], q2: [], q3: [], q4: [] };
+    tasks.forEach(function (t) {
+      var q = t.quadrant || "q2";
+      if (!groups[q]) groups[q] = [];
+      groups[q].push(t);
+    });
+    var html = "";
+    ["q1", "q2", "q3", "q4"].forEach(function (q) {
+      if (!groups[q] || groups[q].length === 0) return;
+      html += '<div class="plan-task-group-label">' + (PLAN_QUAD_LABEL[q] || q) + "</div>";
+      groups[q].forEach(function (t) {
+        var done = !!t.done;
+        html += '<label class="plan-task' + (done ? " done" : "") + '">';
+        html += '<input type="checkbox" class="plan-task-check" data-task-id="' + t.id + '"' + (done ? " checked" : "") + ">";
+        html += '<span class="plan-task-text">' + escapeHtml(t.text) + "</span>";
+        html += "</label>";
+      });
+    });
+    return html;
+  }
+
+  function refreshPlanDayTasks() {
+    var box = document.getElementById("planDayTasks");
+    if (!box) return;
+    box.innerHTML = renderPlanDayTasks();
+    bindPlanDayTaskChecks(box);
+  }
+
+  function bindPlanDayTaskChecks(scope) {
+    if (!scope) return;
+    scope.querySelectorAll(".plan-task-check").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        var id = this.dataset.taskId;
+        var checked = this.checked;
+        MelodiDB.updateInList("tasks", id, {
+          done: checked,
+          status: checked ? "done" : "todo",
+          completedAt: checked ? new Date().toISOString() : null,
+        });
+        refreshPlanDayTasks();
+      });
+    });
   }
 
   function setupPlanningEvents() {
@@ -203,15 +269,34 @@ const App = (function () {
         var content = document.getElementById("plan_" + level).value;
         var map = getPlanMap(level);
         var pk = planPeriodKey(level);
-        map[pk] = { content: content, _updatedAt: new Date().toISOString() };
+        // 保留已有的复盘字段，避免保存计划时把复盘清空
+        map[pk] = map[pk] || {};
+        map[pk].content = content;
+        map[pk]._updatedAt = new Date().toISOString();
         MelodiDB.set("daily:planning_" + level, map);
-        if (level === "review") {
-          App.showReminder("复盘备注已保存", "success");
-        } else {
-          App.showReminder("已保存「" + planPeriodLabel(level, pk) + "」规划", "success");
-        }
+        App.showReminder("已保存「" + planPeriodLabel(level, pk) + "」规划", "success");
       });
     });
+
+    // 各周期复盘保存（独立于计划内容，分周期存储）
+    document.querySelectorAll("[data-save-review]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var level = this.dataset.saveReview;
+        var ta = document.getElementById("plan_" + level + "_review");
+        if (!ta) return;
+        var content = ta.value;
+        var map = getPlanMap(level);
+        var pk = planPeriodKey(level);
+        map[pk] = map[pk] || {};
+        map[pk].review = content;
+        map[pk]._reviewUpdatedAt = new Date().toISOString();
+        MelodiDB.set("daily:planning_" + level, map);
+        App.showReminder("已保存「" + (PLAN_REVIEW_LABEL[level] || "复盘") + "」", "success");
+      });
+    });
+
+    // 今日安排：四象限任务清单双向勾选
+    bindPlanDayTaskChecks(document);
 
     document.querySelectorAll("[data-copy]").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -1244,6 +1329,8 @@ const App = (function () {
     // 自动初始化 Supabase（如果已配置）
     MelodiDB.autoInitSupabase();
     MelodiDB.updateSyncIndicator();
+    // 每日交接：把非今日的任务归档，保持今日四象限任务新鲜（每日更新并归档）
+    if (typeof DailyModule !== "undefined" && DailyModule.archiveYesterdayTasks) DailyModule.archiveYesterdayTasks();
     var route = Sidebar.getCurrentRoute();
     renderPage(route);
     Sidebar.syncTitle(route); // 刷新后根据当前路由校正顶部标题
