@@ -47,18 +47,101 @@ const App = (function () {
     return '<div class="stat-card"><div class="stat-value">' + value + '</div><div class="stat-label">' + label + "</div></div>";
   }
 
-  /* ===== 人生规划 ===== */
+  /* ===== 人生规划（按年/月/周/日 周期滚动 + 随时可改的复盘备注）===== */
+  // 各级计划按不同周期存储，到周期边界自然开启新篇：
+  //   年度 → 每年1月1日；月度 → 每月1日；周 → 每周一；今日落地 → 每天；复盘备注 → 随时
+  function planPeriodKey(level) {
+    if (level === "review") return "note";
+    var d = new Date();
+    if (level === "year") return String(d.getFullYear());
+    if (level === "month") return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    if (level === "week") {
+      var day = d.getDay();
+      var diff = (day === 0) ? -6 : (1 - day); // 周一为一周起点
+      var mon = new Date(d);
+      mon.setDate(d.getDate() + diff);
+      return mon.getFullYear() + "-" + String(mon.getMonth() + 1).padStart(2, "0") + "-" + String(mon.getDate()).padStart(2, "0");
+    }
+    return MelodiDB.todayKey(); // day
+  }
+
+  function planPeriodLabel(level, key) {
+    if (level === "review") return "复盘备注（随时可编辑）";
+    if (level === "year") return /^\d{4}$/.test(key) ? key + " 年度" : key;
+    var m = key.match(/^(\d{4})-(\d{2})$/);
+    if (level === "month" && m) return m[1] + " 年 " + parseInt(m[2], 10) + " 月";
+    var w = key.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (level === "week" && w) {
+      var mon = new Date(key + "T00:00:00");
+      var sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      var f = function (x) { return (x.getMonth() + 1) + "/" + x.getDate(); };
+      return "本周 " + f(mon) + " – " + f(sun) + "（周一更新）";
+    }
+    if (level === "day" && w) return parseInt(w[2], 10) + " 月 " + parseInt(w[3], 10) + " 日";
+    return key;
+  }
+
+  function getPlanMap(level) {
+    return MelodiDB.get("daily:planning_" + level, {});
+  }
+
+  function getPlanCurrent(level) {
+    var map = getPlanMap(level);
+    return map[planPeriodKey(level)] || null;
+  }
+
+  // 复制上一周期内容到编辑器（减少每次重写摩擦）
+  function copyPrevPlan(level, textareaId) {
+    var map = getPlanMap(level);
+    var cur = planPeriodKey(level);
+    var prevKey = null;
+    Object.keys(map).forEach(function (k) {
+      if (k !== cur && (prevKey === null || k > prevKey)) prevKey = k;
+    });
+    if (!prevKey) return false;
+    var ta = document.getElementById(textareaId);
+    if (!ta) return false;
+    ta.value = map[prevKey].content || "";
+    ta.focus();
+    return true;
+  }
+
+  function formatPlanTime(iso) {
+    try {
+      var d = new Date(iso);
+      var p = function (n) { return String(n).padStart(2, "0"); };
+      return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    } catch (e) {
+      return iso;
+    }
+  }
+
   function renderPlanning() {
     var levels = [
-      { key: "year", label: "年度总目标", placeholder: "写下今年的核心目标..." },
-      { key: "month", label: "月度计划", placeholder: "本月拆分计划..." },
-      { key: "week", label: "本周细分", placeholder: "本周具体任务..." },
+      { key: "year", label: "年度总目标", placeholder: "写下今年的核心目标（每年1月1日开启新篇）..." },
+      { key: "month", label: "月度计划", placeholder: "本月拆分计划（每月1日开启）..." },
+      { key: "week", label: "本周细分", placeholder: "本周具体任务（每周一开启）..." },
       { key: "day", label: "今日落地", placeholder: "今天要做的具体事..." },
+      { key: "review", label: "复盘备注", placeholder: "随时记录复盘思考，可随时增删修改..." },
     ];
+
+    // 一次性迁移：旧版按天存储的计划迁移到当前周期键，避免丢失已填内容
+    ["year", "month", "week", "day"].forEach(function (level) {
+      var map = getPlanMap(level);
+      var cur = planPeriodKey(level);
+      if (!map[cur]) {
+        var legacy = Object.keys(map).filter(function (k) { return /^\d{4}-\d{2}-\d{2}$/.test(k); }).sort().pop();
+        if (legacy) {
+          map[cur] = map[legacy];
+          MelodiDB.set("daily:planning_" + level, map);
+        }
+      }
+    });
 
     var html = '<div class="card" style="background:linear-gradient(135deg,var(--melodi-pink-100),var(--melodi-pink-50));border:none;margin-bottom:var(--space-md);">';
     html += '<div style="font-size:var(--font-size-md);font-weight:600;color:var(--melodi-pink-700);">四级时间规划闭环</div>';
-    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">年度总目标 → 月度拆分 → 每周细分 → 每日落地，数据互通联动</div>';
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">年度总目标 → 月度拆分 → 每周细分 → 每日落地；复盘备注随时补充</div>';
     html += "</div>";
 
     html += '<div class="card"><div class="card-header"><div class="card-title">规划详情</div></div>';
@@ -69,15 +152,34 @@ const App = (function () {
     html += "</div>";
 
     levels.forEach(function (l, i) {
-      var saved = MelodiDB.getDayData("planning_" + l.key) || {};
+      var saved = getPlanCurrent(l.key) || {};
+      var isReview = l.key === "review";
+      var pk = planPeriodKey(l.key);
       html += '<div class="tab-panel' + (i === 0 ? " active" : "") + '" data-panel="plan_' + l.key + '">';
-      html += '<div class="form-group"><label class="form-label">' + l.label + "内容</label>";
+
+      // 周期提示
+      html += '<div style="font-size:var(--font-size-xs);color:var(--melodi-pink-600);margin-bottom:8px;">📅 ' + planPeriodLabel(l.key, pk) + "</div>";
+
+      html += '<div class="form-group"><label class="form-label">' + l.label + (isReview ? "" : "内容") + "</label>";
       html += '<textarea class="form-textarea" id="plan_' + l.key + '" rows="6" placeholder="' + l.placeholder + '">' + escapeHtml(saved.content || "") + "</textarea></div>";
-      html += '<div class="form-group"><label class="form-label">复盘备注</label>';
-      html += '<input type="text" class="form-input" id="plan_note_' + l.key + '" placeholder="写下复盘思考..." value="' + escapeHtml(saved.note || "") + '" /></div>';
-      html += '<div class="flex gap-sm"><button class="btn btn-primary btn-sm" data-save="' + l.key + '">保存</button>';
-      html += '<button class="btn btn-ghost btn-sm" data-view-history="' + l.key + '">查看往期</button></div>';
-      html += '<div id="history_' + l.key + '" style="margin-top:12px;"></div>';
+
+      if (isReview && saved._updatedAt) {
+        html += '<div style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin:-4px 0 8px;">最后更新：' + formatPlanTime(saved._updatedAt) + "</div>";
+      }
+
+      html += '<div class="flex gap-sm">';
+      html += '<button class="btn btn-primary btn-sm" data-save="' + l.key + '">保存</button>';
+      if (!isReview) {
+        if (!saved.content) {
+          html += '<button class="btn btn-ghost btn-sm" data-copy="' + l.key + '">复制上期</button>';
+        }
+        html += '<button class="btn btn-ghost btn-sm" data-view-history="' + l.key + '">查看往期</button>';
+      }
+      html += "</div>";
+
+      if (!isReview) {
+        html += '<div id="history_' + l.key + '" style="margin-top:12px;"></div>';
+      }
       html += "</div>";
     });
     html += "</div>";
@@ -100,9 +202,26 @@ const App = (function () {
       btn.addEventListener("click", function () {
         var level = this.dataset.save;
         var content = document.getElementById("plan_" + level).value;
-        var note = document.getElementById("plan_note_" + level).value;
-        MelodiDB.setDayData("planning_" + level, { content: content, note: note });
-        App.showReminder("已保存" + level + "规划", "success");
+        var map = getPlanMap(level);
+        var pk = planPeriodKey(level);
+        map[pk] = { content: content, _updatedAt: new Date().toISOString() };
+        MelodiDB.set("daily:planning_" + level, map);
+        if (level === "review") {
+          App.showReminder("复盘备注已保存", "success");
+        } else {
+          App.showReminder("已保存「" + planPeriodLabel(level, pk) + "」规划", "success");
+        }
+      });
+    });
+
+    document.querySelectorAll("[data-copy]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var level = this.dataset.copy;
+        if (copyPrevPlan(level, "plan_" + level)) {
+          App.showReminder("已填入上期内容，可修改后保存", "success");
+        } else {
+          App.showReminder("没有往期内容可复制", "warning");
+        }
       });
     });
 
@@ -115,23 +234,22 @@ const App = (function () {
           container.innerHTML = "";
           return;
         }
-        var allData = MelodiDB.get("daily:planning_" + level, {});
-        var today = MelodiDB.todayKey();
-        var dates = Object.keys(allData).filter(function (d) { return d !== today && allData[d] && allData[d].content; }).sort().reverse().slice(0, 7);
+        var map = getPlanMap(level);
+        var cur = planPeriodKey(level);
+        var dates = Object.keys(map).filter(function (d) { return d !== cur && map[d] && (map[d].content || "").trim(); }).sort().reverse().slice(0, 10);
         if (dates.length === 0) {
           container.innerHTML = '<div class="empty-state-text" style="padding:8px;">暂无往期记录</div>';
           return;
         }
-        var html = "";
+        var h = "";
         dates.forEach(function (d) {
-          var data = allData[d];
-          html += '<div style="padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:6px;">';
-          html += '<div style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin-bottom:4px;">' + d + "</div>";
-          html += '<div style="font-size:var(--font-size-sm);color:var(--text-primary);white-space:pre-wrap;">' + escapeHtml(data.content) + "</div>";
-          if (data.note) html += '<div style="font-size:var(--font-size-xs);color:var(--melodi-pink-600);margin-top:4px;">备注：' + escapeHtml(data.note) + "</div>";
-          html += "</div>";
+          var data = map[d];
+          h += '<div style="padding:10px;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:6px;">';
+          h += '<div style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin-bottom:4px;">' + planPeriodLabel(level, d) + "</div>";
+          h += '<div style="font-size:var(--font-size-sm);color:var(--text-primary);white-space:pre-wrap;">' + escapeHtml(data.content) + "</div>";
+          h += "</div>";
         });
-        container.innerHTML = html;
+        container.innerHTML = h;
       });
     });
   }
