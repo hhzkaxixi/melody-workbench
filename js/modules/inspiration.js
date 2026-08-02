@@ -147,7 +147,7 @@ const InspirationModule = (function () {
         lastDone: null,
         createdAt: new Date().toISOString(),
       });
-      App.renderPage("inspiration");
+      App.renderPageKeepScroll("inspiration");
       App.showReminder("已加入灵感清单", "success");
     }
 
@@ -179,7 +179,7 @@ const InspirationModule = (function () {
         } else {
           MelodiDB.updateInList("inspiration", id, { done: true, lastDone: new Date().toISOString() });
         }
-        App.renderPage("inspiration");
+        App.renderPageKeepScroll("inspiration");
       });
     });
 
@@ -188,7 +188,7 @@ const InspirationModule = (function () {
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         MelodiDB.removeFromList("inspiration", this.dataset.id);
-        App.renderPage("inspiration");
+        App.renderPageKeepScroll("inspiration");
       });
     });
   }

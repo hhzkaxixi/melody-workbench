@@ -946,6 +946,17 @@ const App = (function () {
     content.scrollTop = 0;
   }
 
+  /* 重绘当前页但保留滚动位置（避免记录/打卡后跳回顶部） */
+  function renderPageKeepScroll(route) {
+    var content = document.getElementById("content");
+    var y = content ? content.scrollTop : 0;
+    renderPage(route);
+    setTimeout(function () {
+      var c = document.getElementById("content");
+      if (c) c.scrollTop = y;
+    }, 30);
+  }
+
   function renderCustomPage(route) {
     var items = Sidebar.getNavItems();
     var item = items.find(function (i) { return i.route === route; });
@@ -1223,6 +1234,7 @@ const App = (function () {
   return {
     init: init,
     renderPage: renderPage,
+    renderPageKeepScroll: renderPageKeepScroll,
     showReminder: showReminder,
   };
 })();

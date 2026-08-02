@@ -504,7 +504,7 @@ const BodyModule = (function () {
         data.exercisePart = part;
         MelodiDB.setDayData("exercise", data);
         App.showReminder("运动打卡成功！加油！", "success");
-        App.renderPage("fitness");
+        refreshFitnessPanel("exercise");
       });
     }
 
@@ -551,7 +551,7 @@ const BodyModule = (function () {
         }
         MelodiDB.addToList("weightRecords", { weight: w, date: MelodiDB.todayKey() });
         App.showReminder("体重已记录", "success");
-        App.renderPage("fitness");
+        refreshFitnessPanel("weight");
       });
     }
 
@@ -570,6 +570,91 @@ const BodyModule = (function () {
 
     // 初始化图表
     renderActiveChart("exercise");
+  }
+
+  /* 原地刷新某个 tab 的面板（不整页重渲染，避免跳顶） */
+  function refreshFitnessPanel(tabKey) {
+    var panel = document.querySelector('.tab-panel[data-panel="' + tabKey + '"]');
+    if (!panel) { App.renderPage("fitness"); return; }
+    if (tabKey === "exercise") {
+      var now = new Date();
+      var isWeekend = now.getDay() === 0 || now.getDay() === 6;
+      panel.innerHTML = renderExerciseSection(isWeekend, now);
+    } else if (tabKey === "weight") {
+      panel.innerHTML = renderWeightSection();
+    } else {
+      App.renderPage("fitness");
+      return;
+    }
+    bindPanel(tabKey);
+    renderActiveChart(tabKey);
+  }
+
+  /* 仅重新绑定指定 panel 内的事件（refreshFitnessPanel 用） */
+  function bindPanel(tabKey) {
+    if (tabKey === "exercise") {
+      var exerciseBtn = document.getElementById("exerciseCheckinBtn");
+      if (exerciseBtn) {
+        exerciseBtn.addEventListener("click", function () {
+          var minutes = parseInt(document.getElementById("exerciseMinutes").value) || 30;
+          var part = document.getElementById("exercisePart").value;
+          if (minutes < 30 || minutes > 60) {
+            App.showReminder("运动时长需在30-60分钟之间", "warning");
+            return;
+          }
+          var data = MelodiDB.getDayData("exercise") || {};
+          if (!data.checkins) data.checkins = {};
+          data.checkins.exercise = true;
+          data.exerciseMinutes = minutes;
+          data.exercisePart = part;
+          MelodiDB.setDayData("exercise", data);
+          App.showReminder("运动打卡成功！加油！", "success");
+          refreshFitnessPanel("exercise");
+        });
+      }
+      var saveLinksBtn = document.getElementById("saveExerciseLinks");
+      if (saveLinksBtn) {
+        saveLinksBtn.addEventListener("click", function () {
+          var data = MelodiDB.getDayData("exercise") || {};
+          data.bilibiliLink = document.getElementById("bilibiliLink").value;
+          data.yogaLink = document.getElementById("yogaLink").value;
+          MelodiDB.setDayData("exercise", data);
+          App.showReminder("链接已保存", "success");
+        });
+      }
+      var gotoWeightBtn = document.getElementById("gotoWeightBtn");
+      if (gotoWeightBtn) {
+        gotoWeightBtn.addEventListener("click", function () {
+          document.querySelectorAll("#bodyTabs .tab").forEach(function (t) { t.classList.remove("active"); });
+          var wt = document.querySelector("#bodyTabs .tab[data-tab='weight']");
+          if (wt) wt.classList.add("active");
+          document.querySelectorAll("#bodyTabs ~ .tab-panel").forEach(function (p) {
+            p.classList.toggle("active", p.dataset.panel === "weight");
+          });
+          renderActiveChart("weight");
+        });
+      }
+    } else if (tabKey === "weight") {
+      var saveWeightBtn = document.getElementById("saveWeightBtn");
+      if (saveWeightBtn) {
+        saveWeightBtn.addEventListener("click", function () {
+          var input = document.getElementById("weightInput");
+          var targetInput = document.getElementById("targetWeightInput");
+          var w = parseFloat(input.value);
+          var tw = parseFloat(targetInput.value);
+          if (tw && tw > 20 && tw < 200) {
+            MelodiDB.setSettings({ targetWeight: tw });
+          }
+          if (!w || w < 20 || w > 200) {
+            App.showReminder("请输入合理的体重", "warning");
+            return;
+          }
+          MelodiDB.addToList("weightRecords", { weight: w, date: MelodiDB.todayKey() });
+          App.showReminder("体重已记录", "success");
+          refreshFitnessPanel("weight");
+        });
+      }
+    }
   }
 
   function renderActiveChart(tab) {

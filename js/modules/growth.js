@@ -207,7 +207,7 @@ const GrowthModule = (function () {
         MelodiDB.addToList("books", { title: title, author: author, read: false });
         titleInput.value = "";
         if (authorInput) authorInput.value = "";
-        App.renderPage("growth");
+        App.renderPageKeepScroll("growth");
         App.showReminder("已添加到书单", "success");
       };
       addBtn.addEventListener("click", addBook);
@@ -220,7 +220,7 @@ const GrowthModule = (function () {
         var book = MelodiDB.getList("books").find(function (b) { return b.id === id; });
         if (book) {
           MelodiDB.updateInList("books", id, { read: !book.read, finishedAt: !book.read ? new Date().toISOString() : null });
-          App.renderPage("growth");
+          App.renderPageKeepScroll("growth");
           App.showReminder(!book.read ? "恭喜读完一本！" : "已取消标记", "success");
         }
       });
@@ -230,7 +230,7 @@ const GrowthModule = (function () {
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         MelodiDB.removeFromList("books", this.dataset.id);
-        App.renderPage("growth");
+        App.renderPageKeepScroll("growth");
       });
     });
   }
@@ -251,7 +251,7 @@ const GrowthModule = (function () {
         stopTimer(true);
       }
     }, 1000);
-    App.renderPage("growth");
+    App.renderPageKeepScroll("growth");
   }
 
   function pauseTimer() {
@@ -260,7 +260,7 @@ const GrowthModule = (function () {
       studyState.intervalId = null;
     }
     studyState.running = false;
-    App.renderPage("growth");
+    App.renderPageKeepScroll("growth");
   }
 
   function stopTimer(reachedTarget) {
@@ -290,7 +290,7 @@ const GrowthModule = (function () {
 
     studyState.elapsed = 0;
     studyState.type = null;
-    App.renderPage("growth");
+    App.renderPageKeepScroll("growth");
   }
 
   function updateTimerDisplay(type) {

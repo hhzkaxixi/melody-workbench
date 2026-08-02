@@ -65,12 +65,12 @@ const DailyModule = (function () {
     html += '<div class="stat-grid">';
     html += statCard(doneCount + "/" + tasks.length, "今日任务");
     html += '<div class="stat-card" id="statWater"><div class="stat-value">' + (waterAmount / 1000).toFixed(1) + 'L</div><div class="stat-label">饮水量</div></div>';
-    html += statCard(sleepData.duration ? sleepData.duration.toFixed(1) + "h" : "--", "睡眠");
+    html += '<div class="stat-card" id="statSleep"><div class="stat-value">' + (sleepData.duration ? sleepData.duration.toFixed(1) + "h" : "--") + '</div><div class="stat-label">睡眠</div></div>';
     html += statCard(totalStudyMin + "min", "学习时长");
     html += "</div>";
 
     // 睡眠作息
-    html += renderSleepSection(sleepData);
+    html += '<div id="sleepSection">' + renderSleepSection(sleepData) + '</div>';
 
     // 快速打卡
     html += renderQuickCheckin();
@@ -364,9 +364,19 @@ const DailyModule = (function () {
         data.water = data.water || 0;
         MelodiDB.setDayData("sleep", data);
         App.showReminder(duration >= (settings.sleepTarget || 7.5) ? "睡眠达标！" : "已记录，注意早睡", "success");
-        App.renderPage("dashboard");
+        refreshSleepSection();
       });
     }
+  }
+
+  function refreshSleepSection() {
+    var box = document.getElementById("sleepSection");
+    if (!box) { App.renderPage("dashboard"); return; }
+    var sleepData = MelodiDB.getDayData("sleep") || {};
+    box.innerHTML = renderSleepSection(sleepData);
+    setupSleepEvents();
+    var stat = document.getElementById("statSleep");
+    if (stat) stat.textContent = sleepData.duration ? sleepData.duration.toFixed(1) + "h" : "--";
   }
 
   /* === 打卡事件 === */
