@@ -28,7 +28,6 @@ const BodyModule = (function () {
     html += '<div class="tab" data-tab="skincare">皮肤管理</div>';
     html += '<div class="tab" data-tab="wellness">养生习惯</div>';
     html += '<div class="tab" data-tab="leisure">休闲习惯</div>';
-    html += '<div class="tab" data-tab="weight">体重追踪</div>';
     html += "</div>";
 
     // 运动规划
@@ -49,11 +48,6 @@ const BodyModule = (function () {
     // 休闲习惯
     html += '<div class="tab-panel" data-panel="leisure">';
     html += renderLeisureSection();
-    html += "</div>";
-
-    // 体重追踪
-    html += '<div class="tab-panel" data-panel="weight">';
-    html += renderWeightSection();
     html += "</div>";
 
     setTimeout(setupEvents, 0);
@@ -154,13 +148,9 @@ const BodyModule = (function () {
     html += '<div class="chart-canvas-wrap"><canvas id="exercisePartChart"></canvas></div>';
     html += "</div>";
 
-    // 体重联动
-    html += '<div class="card" style="background:var(--melodi-pink-50);">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-    html += '<div><div style="font-weight:600;color:var(--melodi-pink-700);font-size:var(--font-size-sm);">体重联动</div>';
-    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);">运动数据与体重板块联动生成身材变化曲线</div></div>';
-    html += '<button class="btn btn-secondary btn-sm" id="gotoWeightBtn">查看体重</button></div>';
-    html += "</div>";
+    // 体重追踪（内联，不折叠）
+    html += '<div class="section-divider"><span class="section-divider-label">体重追踪</span></div>';
+    html += renderWeightSection();
 
     return html;
   }
@@ -414,6 +404,10 @@ const BodyModule = (function () {
     html += '<div class="chart-canvas-wrap"><canvas id="leisureChart"></canvas></div>';
     html += "</div>";
 
+    // 灵感清单（作为休闲习惯的一个 part）
+    html += '<div class="section-divider"><span class="section-divider-label">灵感清单</span></div>';
+    html += '<div id="inspirationPart">' + InspirationModule.renderPart() + "</div>";
+
     return html;
   }
 
@@ -520,21 +514,7 @@ const BodyModule = (function () {
       });
     }
 
-    // 跳转体重（切到体重 tab）
-    var gotoWeightBtn = document.getElementById("gotoWeightBtn");
-    if (gotoWeightBtn) {
-      gotoWeightBtn.addEventListener("click", function () {
-        document.querySelectorAll("#bodyTabs .tab").forEach(function (t) { t.classList.remove("active"); });
-        var wt = document.querySelector("#bodyTabs .tab[data-tab='weight']");
-        if (wt) wt.classList.add("active");
-        document.querySelectorAll("#bodyTabs ~ .tab-panel").forEach(function (p) {
-          p.classList.toggle("active", p.dataset.panel === "weight");
-        });
-        renderActiveChart("weight");
-      });
-    }
-
-    // 记录体重
+    // 记录体重（内联在运动规划面板内，就地刷新）
     var saveWeightBtn = document.getElementById("saveWeightBtn");
     if (saveWeightBtn) {
       saveWeightBtn.addEventListener("click", function () {
@@ -551,7 +531,7 @@ const BodyModule = (function () {
         }
         MelodiDB.addToList("weightRecords", { weight: w, date: MelodiDB.todayKey() });
         App.showReminder("体重已记录", "success");
-        refreshFitnessPanel("weight");
+        refreshFitnessPanel("exercise");
       });
     }
 
@@ -567,6 +547,12 @@ const BodyModule = (function () {
         }
       });
     }
+
+    // 灵感清单（内嵌在休闲习惯中）事件绑定
+    if (window.InspirationModule) InspirationModule.bindPart();
+
+    // 初始化观影列表（显示已有记录）
+    renderMovieList();
 
     // 初始化图表
     renderActiveChart("exercise");
@@ -622,19 +608,7 @@ const BodyModule = (function () {
           App.showReminder("链接已保存", "success");
         });
       }
-      var gotoWeightBtn = document.getElementById("gotoWeightBtn");
-      if (gotoWeightBtn) {
-        gotoWeightBtn.addEventListener("click", function () {
-          document.querySelectorAll("#bodyTabs .tab").forEach(function (t) { t.classList.remove("active"); });
-          var wt = document.querySelector("#bodyTabs .tab[data-tab='weight']");
-          if (wt) wt.classList.add("active");
-          document.querySelectorAll("#bodyTabs ~ .tab-panel").forEach(function (p) {
-            p.classList.toggle("active", p.dataset.panel === "weight");
-          });
-          renderActiveChart("weight");
-        });
-      }
-    } else if (tabKey === "weight") {
+      // 记录体重（内联，就地刷新整个运动规划面板）
       var saveWeightBtn = document.getElementById("saveWeightBtn");
       if (saveWeightBtn) {
         saveWeightBtn.addEventListener("click", function () {
@@ -651,18 +625,19 @@ const BodyModule = (function () {
           }
           MelodiDB.addToList("weightRecords", { weight: w, date: MelodiDB.todayKey() });
           App.showReminder("体重已记录", "success");
-          refreshFitnessPanel("weight");
+          refreshFitnessPanel("exercise");
         });
       }
     }
   }
 
   function renderActiveChart(tab) {
-    if (tab === "exercise") renderExerciseCharts();
-    else if (tab === "skincare") renderSkincareChart();
+    if (tab === "exercise") {
+      renderExerciseCharts();
+      renderWeightCharts(); // 体重已内联在运动规划面板中
+    } else if (tab === "skincare") renderSkincareChart();
     else if (tab === "wellness") renderWellnessChart();
     else if (tab === "leisure") renderLeisureChart();
-    else if (tab === "weight") renderWeightCharts();
   }
 
   function renderMovieList() {
