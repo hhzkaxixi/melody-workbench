@@ -34,7 +34,6 @@ const FIXED_NAV_ITEMS = [
   { route: "study", label: "学习板块", icon: "study", fixed: true },
   { route: "fitness", label: "身材管理", icon: "fitness", fixed: true },
   { route: "fortune", label: "运势分析", icon: "fortune", fixed: true },
-  { route: "inspiration", label: "灵感清单", icon: "inspiration", fixed: true },
   { route: "export", label: "数据管理", icon: "export", fixed: true },
 ];
 
