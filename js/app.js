@@ -25,7 +25,6 @@ const App = (function () {
     news: renderNews,
     exam: renderExam,
     language: renderLanguage,
-    inspiration: function () { return InspirationModule.render(); },
     settings: renderSettings,
   };
 
