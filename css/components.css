@@ -1160,6 +1160,51 @@ input[type="time"] {
 .btn-quickstart:hover {
   background: var(--melodi-pink-200);
 }
+.btn-pomodoro {
+  border: none;
+  background: var(--melodi-pink-500);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-pomodoro:hover {
+  background: var(--melodi-pink-600);
+}
+
+/* 专注遮罩：时长预设 + 通知状态 */
+.focus-durations {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.fd-btn {
+  border: 1px solid var(--melodi-pink-200);
+  background: transparent;
+  color: var(--text-secondary);
+  width: 40px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.fd-btn:hover { border-color: var(--melodi-pink-400); }
+.fd-btn.active {
+  background: var(--melodi-pink-500);
+  border-color: var(--melodi-pink-500);
+  color: #fff;
+  font-weight: 600;
+}
+.focus-notify-state {
+  margin-top: 8px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  min-height: 16px;
+}
 
 /* 窄屏：四象限改为单列 */
 @media (max-width: 560px) {

@@ -16,6 +16,12 @@ const MelodiADHD = (function () {
     paused: false,
     onComplete: null,
     startedAt: null,
+    endAt: null, // 目标结束时间戳（毫秒）—— 锁屏/后台挂起不影响精度
+    notifyTimer: null, // 系统通知调度器
+    pausedLeft: 0, // 暂停时记录的剩余毫秒
+    notified: false, // 是否已发过结束通知，避免重复
+    mode: "focus", // focus(专注) | break(休息)
+    breakMin: 0, // 番茄钟：专注结束后的休息分钟数（0 表示不休息）
   };
 
   var audioCtx = null;
@@ -155,6 +161,45 @@ const MelodiADHD = (function () {
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3100);
   }
 
+  /* ===== 系统通知：锁屏/黑屏也能提醒 ===== */
+  var notifyEnabled = true;
+  function notifySupported() {
+    return typeof Notification !== "undefined";
+  }
+  function notifyPermission() {
+    if (!notifySupported()) return "unsupported";
+    try { return Notification.permission; } catch (e) { return "unsupported"; }
+  }
+  function ensureNotifyPermission(cb) {
+    if (!notifySupported()) { if (cb) cb("unsupported"); return; }
+    var p = Notification.permission;
+    if (p === "granted" || p === "denied") { if (cb) cb(p); return; }
+    try {
+      var r = Notification.requestPermission();
+      if (r && typeof r.then === "function") r.then(function (pp) { if (cb) cb(pp); });
+      else if (cb) cb("default");
+    } catch (e) { if (cb) cb("default"); }
+  }
+  function notify(title, body, tag) {
+    if (!notifyEnabled) return false;
+    if (!notifySupported() || Notification.permission !== "granted") return false;
+    try {
+      var n = new Notification(title, {
+        body: body || "",
+        tag: tag || "melodi-focus",
+        icon: "./assets/icons/apple-touch-icon.png",
+      });
+      n.onclick = function () { try { window.focus(); n.close(); } catch (e) {} };
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function setNotifyEnabled(v) {
+    notifyEnabled = !!v;
+    if (window.MelodiDB) { try { MelodiDB.setSettings({ notifyEnabled: notifyEnabled }); } catch (e) {} }
+  }
+  function getNotifyEnabled() { return notifyEnabled; }
+
   /* ===== 专注模式 =====
      全屏遮罩隔绝干扰，只留当前这一件事 + 倒计时 */
   function buildFocusOverlay() {
@@ -170,6 +215,13 @@ const MelodiADHD = (function () {
       '  <div class="focus-task" id="focusTaskName">任务</div>' +
       '  <div class="focus-countdown" id="focusCountdown">05:00</div>' +
       '  <div class="focus-progress"><div class="focus-progress-bar" id="focusProgressBar"></div></div>' +
+      '  <div class="focus-durations" id="focusDurations">' +
+      '    <button class="fd-btn" data-min="5">5</button>' +
+      '    <button class="fd-btn" data-min="15">15</button>' +
+      '    <button class="fd-btn" data-min="25">25</button>' +
+      '    <button class="fd-btn" data-min="45">45</button>' +
+      '  </div>' +
+      '  <div class="focus-notify-state" id="focusNotifyState"></div>' +
       '  <div class="focus-hint" id="focusHint">屏蔽一切干扰，只做这一件事</div>' +
       '  <div class="focus-actions">' +
       '    <button class="btn btn-secondary btn-sm" id="focusPauseBtn">暂停</button>' +
@@ -182,6 +234,21 @@ const MelodiADHD = (function () {
     el.querySelector("#focusPauseBtn").addEventListener("click", togglePause);
     el.querySelector("#focusDoneBtn").addEventListener("click", function () { finishFocus(true); });
     el.querySelector("#focusExitBtn").addEventListener("click", function () { finishFocus(false); });
+    el.querySelectorAll("#focusDurations .fd-btn").forEach(function (b) {
+      b.addEventListener("click", function () {
+        if (!focus.active) return;
+        var m = parseInt(b.dataset.min, 10);
+        if (!m) return;
+        el.querySelectorAll("#focusDurations .fd-btn").forEach(function (x) { x.classList.remove("active"); });
+        b.classList.add("active");
+        focus.totalSec = m * 60;
+        focus.leftSec = m * 60;
+        focus.endAt = Date.now() + focus.totalSec * 1000;
+        focus.notified = false;
+        persistFocus();
+        renderFocus();
+      });
+    });
     return el;
   }
 
@@ -191,7 +258,15 @@ const MelodiADHD = (function () {
     return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
   }
 
+  /* 剩余秒数始终由「目标结束时间戳 - 当前时间」推算，锁屏/后台挂起后回来仍精确 */
+  function computeLeftSec() {
+    if (focus.paused) return focus.leftSec;
+    if (!focus.endAt) return focus.leftSec;
+    return Math.max(0, Math.round((focus.endAt - Date.now()) / 1000));
+  }
+
   function renderFocus() {
+    focus.leftSec = computeLeftSec();
     var cd = document.getElementById("focusCountdown");
     var bar = document.getElementById("focusProgressBar");
     if (cd) cd.textContent = fmt(focus.leftSec);
@@ -207,16 +282,20 @@ const MelodiADHD = (function () {
     }
   }
 
-  /* 启动专注：opts = { name, minutes, hint, onComplete } */
+  /* 启动专注：opts = { name, minutes, hint, breakMin, onComplete } */
   function startFocus(opts) {
     opts = opts || {};
     if (focus.active) stopTimer();
     var overlay = buildFocusOverlay();
     focus.active = true;
     focus.paused = false;
+    focus.mode = "focus";
     focus.taskName = opts.name || "专注中";
     focus.totalSec = Math.round((opts.minutes || 5) * 60);
     focus.leftSec = focus.totalSec;
+    focus.endAt = Date.now() + focus.totalSec * 1000;
+    focus.breakMin = opts.breakMin || 0;
+    focus.notified = false;
     focus.onComplete = opts.onComplete || null;
     focus.startedAt = Date.now();
 
@@ -227,15 +306,29 @@ const MelodiADHD = (function () {
     var pauseBtn = document.getElementById("focusPauseBtn");
     if (pauseBtn) pauseBtn.textContent = "暂停";
 
+    // 时长预设高亮
+    var durBox = document.getElementById("focusDurations");
+    if (durBox) {
+      durBox.querySelectorAll(".fd-btn").forEach(function (b) {
+        b.classList.toggle("active", parseInt(b.dataset.min, 10) * 60 === focus.totalSec);
+      });
+    }
+    updateNotifyState();
+
     overlay.classList.add("show");
     document.body.classList.add("focus-locked");
     renderFocus();
     play("tick");
     buzz([25]);
 
+    // 申请通知权限 + 调度锁屏提醒 + 持久化（杀进程/冷启动后能补提醒）
+    ensureNotifyPermission();
+    persistFocus();
+    scheduleEndNotify();
+
     focus.timer = setInterval(function () {
       if (focus.paused) return;
-      focus.leftSec--;
+      focus.leftSec = computeLeftSec();
       renderFocus();
       if (focus.leftSec <= 0) finishFocus(true);
     }, 1000);
@@ -253,27 +346,96 @@ const MelodiADHD = (function () {
 
   function togglePause() {
     if (!focus.active) return;
-    focus.paused = !focus.paused;
+    if (!focus.paused) {
+      focus.paused = true;
+      focus.pausedLeft = Math.max(0, focus.endAt - Date.now());
+      if (focus.notifyTimer) { clearTimeout(focus.notifyTimer); focus.notifyTimer = null; }
+    } else {
+      focus.paused = false;
+      focus.endAt = Date.now() + focus.pausedLeft;
+      persistFocus();
+      scheduleEndNotify();
+    }
     var btn = document.getElementById("focusPauseBtn");
     if (btn) btn.textContent = focus.paused ? "继续" : "暂停";
     var overlay = document.getElementById("focusOverlay");
     if (overlay) overlay.classList.toggle("paused", focus.paused);
+    renderFocus();
   }
 
   function stopTimer() {
     if (focus.timer) { clearInterval(focus.timer); focus.timer = null; }
+    if (focus.notifyTimer) { clearTimeout(focus.notifyTimer); focus.notifyTimer = null; }
   }
 
-  function finishFocus(completed) {
-    if (!focus.active) return;
-    stopTimer();
-    var elapsedMin = Math.round(((focus.totalSec - focus.leftSec) / 60) * 10) / 10;
-    var overlay = document.getElementById("focusOverlay");
-    if (overlay) { overlay.classList.remove("show", "urgent", "paused"); }
-    document.body.classList.remove("focus-locked");
-    focus.active = false;
+  /* ===== 持久化/恢复 + 通知辅助（锁屏/杀进程兜底） ===== */
+  function updateNotifyState() {
+    var box = document.getElementById("focusNotifyState");
+    if (!box) return;
+    var p = notifyPermission();
+    if (p === "granted") box.textContent = "🔔 锁屏也会提醒你";
+    else if (p === "unsupported") box.textContent = "⚠️ 此设备不支持系统通知（重新打开会补提醒）";
+    else if (p === "denied") box.textContent = "🔕 通知被拒，锁屏不提醒（去系统设置开启）";
+    else box.textContent = "🔔 已申请通知权限，允许后锁屏也能提醒";
+  }
 
-    // 累计专注时长入库，供学习统计使用
+  function scheduleEndNotify() {
+    if (focus.notifyTimer) { clearTimeout(focus.notifyTimer); focus.notifyTimer = null; }
+    if (focus.paused) return;
+    var remaining = focus.endAt - Date.now();
+    if (remaining <= 0) return;
+    focus.notifyTimer = setTimeout(function () {
+      if (focus.paused || focus.notified) return;
+      focus.notified = true;
+      if (focus.mode === "focus") {
+        notify("专注时间到啦 🎀", "「" + focus.taskName + "」专注结束，记得收个尾~");
+      } else {
+        notify("休息结束 🌸", "休息好了，开始下一段专注吧");
+      }
+    }, remaining);
+  }
+
+  function persistFocus() {
+    try {
+      localStorage.setItem("melodi:focusSession", JSON.stringify({
+        name: focus.taskName,
+        totalSec: focus.totalSec,
+        endAt: focus.endAt,
+        startedAt: focus.startedAt,
+        mode: focus.mode,
+        breakMin: focus.breakMin,
+        paused: focus.paused,
+        pausedLeft: focus.pausedLeft,
+      }));
+    } catch (e) {}
+  }
+
+  function clearPersistFocus() {
+    try { localStorage.removeItem("melodi:focusSession"); } catch (e) {}
+  }
+
+  /* 冷启动：上次专注可能在锁屏/后台已到点却没弹通知，这里补提醒 */
+  function restoreFocusFromStorage() {
+    try {
+      var raw = localStorage.getItem("melodi:focusSession");
+      if (!raw) return;
+      var s = JSON.parse(raw);
+      if (!s || !s.endAt) return;
+      var min = Math.round(((s.totalSec || 300) / 60) * 10) / 10;
+      if (Date.now() >= s.endAt) {
+        localStorage.removeItem("melodi:focusSession");
+        if (s.mode === "break") {
+          notify("休息结束 🌸", "上次休息已结束，开始下一段专注吧");
+          toast("上一次休息已结束（约 " + min + " 分钟）", "info");
+        } else {
+          notify("专注时间到啦 🎀", "「" + (s.name || "任务") + "」上次专注已到点，已为你记录约 " + min + " 分钟");
+          toast("上一次专注已到点：约 " + min + " 分钟，已为你记录", "success");
+        }
+      }
+    } catch (e) {}
+  }
+
+  function recordFocus(elapsedMin, completed) {
     if (elapsedMin > 0 && window.MelodiDB) {
       var d = MelodiDB.getDayData("focus") || { total: 0, sessions: [] };
       d.total = Math.round(((d.total || 0) + elapsedMin) * 10) / 10;
@@ -281,8 +443,82 @@ const MelodiADHD = (function () {
       d.sessions.push({ name: focus.taskName, min: elapsedMin, at: new Date().toISOString(), done: !!completed });
       MelodiDB.setDayData("focus", d);
     }
+  }
+
+  function callOnComplete(elapsedMin, completed) {
+    if (typeof focus.onComplete === "function") {
+      try { focus.onComplete(elapsedMin, !!completed); } catch (e) { console.warn(e); }
+    }
+    focus.onComplete = null;
+  }
+
+  function finishFocus(completed) {
+    if (!focus.active) return;
+
+    // 休息模式结束：收尾（不记专注时长）
+    if (focus.mode === "break") {
+      stopTimer();
+      clearPersistFocus();
+      var ov = document.getElementById("focusOverlay");
+      if (ov) ov.classList.remove("show", "urgent", "paused");
+      document.body.classList.remove("focus-locked");
+      focus.active = false;
+      focus.mode = "focus";
+      play("tick");
+      buzz([40, 60, 40]);
+      if (!focus.notified) { focus.notified = true; notify("休息结束 🌸", "休息好了，开始下一段专注吧"); }
+      toast("休息结束，继续加油 🌸", "info");
+      return;
+    }
+
+    stopTimer();
+    var elapsedMin = Math.round(((focus.totalSec - focus.leftSec) / 60) * 10) / 10;
+
+    // 专注完成 + 设置了番茄休息 -> 自动进入休息，不关闭遮罩
+    if (completed && focus.breakMin > 0) {
+      focus.mode = "break";
+      focus.taskName = "休息一下 ☕";
+      focus.totalSec = focus.breakMin * 60;
+      focus.leftSec = focus.totalSec;
+      focus.endAt = Date.now() + focus.totalSec * 1000;
+      focus.notified = false;
+      clearPersistFocus();
+      recordFocus(elapsedMin, completed);
+      callOnComplete(elapsedMin, completed);
+      play("rest");
+      buzz([60, 80, 60]);
+      confetti(null);
+      notify("专注完成 🎀", "专注告一段落，可以休息 " + focus.breakMin + " 分钟啦 ☕");
+      toast("专注完成！休息 " + focus.breakMin + " 分钟 ☕", "success");
+      var nameEl = document.getElementById("focusTaskName");
+      if (nameEl) nameEl.textContent = "休息一下 ☕";
+      var hintEl = document.getElementById("focusHint");
+      if (hintEl) hintEl.textContent = "离开屏幕，活动一下身体、喝口水";
+      var durBox = document.getElementById("focusDurations");
+      if (durBox) durBox.querySelectorAll(".fd-btn").forEach(function (b) { b.classList.remove("active"); });
+      renderFocus();
+      persistFocus();
+      scheduleEndNotify();
+      focus.timer = setInterval(function () {
+        if (focus.paused) return;
+        focus.leftSec = computeLeftSec();
+        renderFocus();
+        if (focus.leftSec <= 0) finishFocus(true);
+      }, 1000);
+      return;
+    }
+
+    // 普通完成 / 退出
+    var overlay2 = document.getElementById("focusOverlay");
+    if (overlay2) overlay2.classList.remove("show", "urgent", "paused");
+    document.body.classList.remove("focus-locked");
+    focus.active = false;
+    clearPersistFocus();
+
+    recordFocus(elapsedMin, completed);
 
     if (completed) {
+      if (!focus.notified) { focus.notified = true; notify("专注完成 🎀", "「" + focus.taskName + "」专注结束，做得好！"); }
       play("rest");
       buzz([60, 80, 60]);
       confetti(null);
@@ -291,10 +527,7 @@ const MelodiADHD = (function () {
       toast("已记录 " + elapsedMin + " 分钟，中断也算数", "info");
     }
 
-    if (typeof focus.onComplete === "function") {
-      try { focus.onComplete(elapsedMin, !!completed); } catch (e) { console.warn(e); }
-    }
-    focus.onComplete = null;
+    callOnComplete(elapsedMin, completed);
   }
 
   function isFocusing() { return focus.active; }
@@ -320,23 +553,35 @@ const MelodiADHD = (function () {
     chip.querySelector(".countdown-chip-name").textContent = name;
     box.appendChild(chip);
 
-    var state = { left: Math.round(minutes * 60), el: chip, timer: null };
+    var state = {
+      endAt: Date.now() + Math.round(minutes * 60) * 1000,
+      totalSec: Math.round(minutes * 60),
+      el: chip,
+      timer: null,
+      notified: false,
+      name: name,
+      onEnd: onEnd,
+    };
     chips[id] = state;
 
+    function leftSec() {
+      return Math.max(0, Math.round((state.endAt - Date.now()) / 1000));
+    }
     function tick() {
+      var ls = leftSec();
       var t = chip.querySelector(".countdown-chip-time");
-      var m = Math.floor(state.left / 60), s = state.left % 60;
+      var m = Math.floor(ls / 60), s = ls % 60;
       if (t) t.textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-      if (state.left <= 60) chip.classList.add("urgent");
-      if (state.left <= 0) {
+      if (ls <= 60) chip.classList.add("urgent");
+      if (ls <= 0) {
         stopCountdown(id);
         play("alert");
         buzz([80, 100, 80]);
+        if (!state.notified) { state.notified = true; notify("时间到啦 ⏰", "「" + name + "」预计时间到了，收个尾吧"); }
         toast("「" + name + "」时间到了", "warning");
         if (typeof onEnd === "function") onEnd();
         return;
       }
-      state.left--;
     }
     tick();
     state.timer = setInterval(tick, 1000);
@@ -372,6 +617,7 @@ const MelodiADHD = (function () {
     var s = MelodiDB.getSettings();
     soundEnabled = s.soundEnabled !== false;
     vibrateEnabled = s.vibrateEnabled !== false;
+    notifyEnabled = s.notifyEnabled !== false;
   }
 
   function setPrefs(p) {
@@ -396,6 +642,16 @@ const MelodiADHD = (function () {
     };
     document.addEventListener("click", unlock);
     document.addEventListener("touchstart", unlock);
+    // 从锁屏/后台回到前台：补算剩余时间，到点立即补提醒（黑屏兜底层）
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && focus.active && !focus.paused) {
+        focus.leftSec = computeLeftSec();
+        renderFocus();
+        if (focus.leftSec <= 0) finishFocus(true);
+      }
+    });
+    // 冷启动：上次专注可能在后台已到点却没弹通知，这里补提醒
+    restoreFocusFromStorage();
   }
 
   return {
@@ -405,6 +661,12 @@ const MelodiADHD = (function () {
     toast: toast,
     celebrate: celebrate,
     confetti: confetti,
+    notify: notify,
+    notifySupported: notifySupported,
+    notifyPermission: notifyPermission,
+    ensureNotifyPermission: ensureNotifyPermission,
+    setNotifyEnabled: setNotifyEnabled,
+    getNotifyEnabled: getNotifyEnabled,
     startFocus: startFocus,
     quickStart: quickStart,
     finishFocus: finishFocus,
