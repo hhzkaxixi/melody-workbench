@@ -12,7 +12,6 @@ const App = (function () {
   var pageRenderers = {
     dashboard: function () { return DailyModule.render(); },
     growth: function () { return GrowthModule.render(); },
-    study: function () { return StudyModule.render(); },
     calendar: function () { return MelodiCalendar.render(); },
     export: function () { return MelodiExport.render(); },
     planning: renderPlanning,
@@ -116,6 +115,97 @@ const App = (function () {
     }
   }
 
+  /* ===== 学习方向（原「学习板块」已取消，方向置顶到人生规划作为提醒）===== */
+  // 这些方向既是提醒，也是一键开始 5 分钟专注的入口；学习时长仍计入 study 日数据。
+  var PRESET_DIRS = [
+    { key: "exam_civil", label: "考公上岸", icon: "🏛️" },
+    { key: "exam_post", label: "考研", icon: "🎓" },
+    { key: "lang_en", label: "英语", icon: "🔤" },
+    { key: "lang_kr", label: "韩语", icon: "🇰🇷" },
+    { key: "finance", label: "理财金融", icon: "💰" },
+    { key: "skill", label: "技能提升", icon: "🛠️" },
+  ];
+
+  function getStudyDirections() {
+    var custom = MelodiDB.getList("studyDirections");
+    var settings = MelodiDB.getSettings();
+    var hidden = settings.hiddenDirections || [];
+    var presets = PRESET_DIRS.filter(function (d) { return hidden.indexOf(d.key) < 0; });
+    return presets.concat(custom.map(function (c) {
+      return { key: c.id, label: c.text, icon: c.icon || "📚", custom: true };
+    }));
+  }
+
+  function studyAddMinutes(dirKey, min) {
+    if (!min || min <= 0) return;
+    var d = MelodiDB.getDayData("study") || { minutes: 0, rounds: 0, byDirection: {} };
+    d.minutes = Math.round(((d.minutes || 0) + min) * 10) / 10;
+    d.byDirection = d.byDirection || {};
+    if (dirKey) d.byDirection[dirKey] = Math.round(((d.byDirection[dirKey] || 0) + min) * 10) / 10;
+    MelodiDB.setDayData("study", d);
+  }
+
+  function renderStudyReminder() {
+    var dirs = getStudyDirections();
+    var today = MelodiDB.getDayData("study") || {};
+    var byDir = today.byDirection || {};
+    var html = '<div class="card study-reminder-card">';
+    html += '<div class="card-header"><div class="card-title">🎯 学习方向（置顶提醒）</div>';
+    html += '<span class="muted">点方向即开始 5 分钟专注，今日已学自动记下</span></div>';
+    html += '<div class="dir-reminder-list" id="studyDirReminder">';
+    dirs.forEach(function (d) {
+      var min = byDir[d.key] || 0;
+      var done = min > 0;
+      html += '<button class="dir-reminder-chip' + (done ? " done" : "") + '" data-dir="' + d.key + '" data-dir-label="' + escapeHtml(d.label) + '">';
+      html += '<span class="dir-ico">' + d.icon + "</span>";
+      html += '<span class="dir-name">' + escapeHtml(d.label) + "</span>";
+      html += '<span class="dir-today">' + (done ? "今日 " + Math.round(min) + " 分钟" : "未学") + "</span>";
+      html += "</button>";
+    });
+    html += "</div>";
+    html += '<div class="flex gap-sm" style="margin-top:10px;">';
+    html += '<input type="text" class="form-input" id="newDirInput" placeholder="自定义方向，如：日语 / 摄影">';
+    html += '<button class="btn btn-secondary btn-sm" id="addDirBtn">添加</button>';
+    html += "</div></div>";
+    return html;
+  }
+
+  function refreshStudyReminder() {
+    var box = document.getElementById("studyDirReminder");
+    if (!box) return;
+    var dirs = getStudyDirections();
+    var today = MelodiDB.getDayData("study") || {};
+    var byDir = today.byDirection || {};
+    var h = "";
+    dirs.forEach(function (d) {
+      var min = byDir[d.key] || 0;
+      var done = min > 0;
+      h += '<button class="dir-reminder-chip' + (done ? " done" : "") + '" data-dir="' + d.key + '" data-dir-label="' + escapeHtml(d.label) + '">';
+      h += '<span class="dir-ico">' + d.icon + "</span>";
+      h += '<span class="dir-name">' + escapeHtml(d.label) + "</span>";
+      h += '<span class="dir-today">' + (done ? "今日 " + Math.round(min) + " 分钟" : "未学") + "</span>";
+      h += "</button>";
+    });
+    box.innerHTML = h;
+    box.querySelectorAll(".dir-reminder-chip").forEach(function (chip) {
+      bindDirChip(chip);
+    });
+  }
+
+  function bindDirChip(chip) {
+    chip.addEventListener("click", function () {
+      var key = chip.getAttribute("data-dir");
+      var label = chip.getAttribute("data-dir-label");
+      if (!window.MelodiADHD) return;
+      MelodiADHD.quickStart(label, function (min) {
+        if (min > 0) {
+          studyAddMinutes(key, min);
+          refreshStudyReminder();
+        }
+      });
+    });
+  }
+
   function renderPlanning() {
     var levels = [
       { key: "day", label: "今日安排", placeholder: "今天要做的具体事..." },
@@ -141,6 +231,9 @@ const App = (function () {
     html += '<div style="font-size:var(--font-size-md);font-weight:600;color:var(--melodi-pink-700);">四级时间规划闭环</div>';
     html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">每日安排 → 每周细分 → 月度计划 → 年度总目标；每个周期下分别做复盘</div>';
     html += "</div>";
+
+    // 学习方向置顶提醒（原「学习板块」已取消，方向并入此处作为日常提醒）
+    html += renderStudyReminder();
 
     html += '<div class="card"><div class="card-header"><div class="card-title">规划详情</div></div>';
     html += '<div class="tabs" id="planningTabs">';
@@ -283,6 +376,19 @@ const App = (function () {
         });
         container.innerHTML = h;
       });
+    });
+
+    // 学习方向置顶提醒：点方向开始 5 分钟专注，添加自定义方向
+    document.querySelectorAll("#studyDirReminder .dir-reminder-chip").forEach(function (chip) {
+      bindDirChip(chip);
+    });
+    var addDirBtn = document.getElementById("addDirBtn");
+    if (addDirBtn) addDirBtn.addEventListener("click", function () {
+      var inp = document.getElementById("newDirInput");
+      if (!inp || !inp.value.trim()) return;
+      MelodiDB.addToList("studyDirections", { text: inp.value.trim(), icon: "📚" });
+      App.showReminder("已添加学习方向", "success");
+      App.renderPage("planning");
     });
   }
 

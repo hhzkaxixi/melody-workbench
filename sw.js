@@ -1,5 +1,5 @@
 /* 美乐蒂工作台 Service Worker - 离线缓存 */
-const CACHE_NAME = "melodi-workbench-v29";
+const CACHE_NAME = "melodi-workbench-v30";
 const ASSETS = [
   "./",
   "./index.html",
@@ -20,7 +20,6 @@ const ASSETS = [
   "./js/food-vision.js",
   "./js/adhd.js",
   "./js/export.js",
-  "./js/modules/study.js",
   "./js/modules/inspiration.js",
   "./js/modules/fortune.js",
   "./assets/icons/icon.svg",

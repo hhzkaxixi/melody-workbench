@@ -1588,6 +1588,51 @@ input[type="time"] {
   accent-color: var(--melodi-pink-500);
   cursor: pointer;
 }
+
+/* ===== 学习方向置顶提醒（人生规划页顶部）===== */
+.study-reminder-card {
+  background: linear-gradient(135deg, var(--melodi-pink-50), #fff) !important;
+  border: 1px solid var(--melodi-pink-200) !important;
+  margin-bottom: var(--space-md);
+}
+.dir-reminder-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dir-reminder-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--melodi-pink-200);
+  background: #fff;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.dir-reminder-chip:active {
+  transform: scale(0.96);
+}
+.dir-reminder-chip .dir-ico {
+  font-size: 16px;
+}
+.dir-reminder-chip .dir-name {
+  font-weight: 600;
+}
+.dir-reminder-chip .dir-today {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+.dir-reminder-chip.done {
+  background: var(--melodi-pink-100);
+  border-color: var(--melodi-pink-400);
+}
+.dir-reminder-chip.done .dir-today {
+  color: var(--melodi-pink-600);
+}
 .archive-day-label {
   font-size: var(--font-size-xs);
   color: var(--melodi-pink-600);
