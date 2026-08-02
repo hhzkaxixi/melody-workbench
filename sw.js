@@ -1,5 +1,5 @@
 /* 美乐蒂工作台 Service Worker - 离线缓存 */
-const CACHE_NAME = "melodi-workbench-v18";
+const CACHE_NAME = "melodi-workbench-v19";
 const ASSETS = [
   "./",
   "./index.html",
@@ -22,6 +22,7 @@ const ASSETS = [
   "./js/export.js",
   "./js/modules/study.js",
   "./js/modules/inspiration.js",
+  "./js/modules/fortune.js",
   "./assets/icons/icon.svg",
   "./assets/icons/apple-touch-icon.png",
   "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js",
