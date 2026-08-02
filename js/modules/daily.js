@@ -6,6 +6,7 @@
 const DailyModule = (function () {
   var settings = null;
   var today = "";
+  var activeTab = "sleep"; // 今日总览当前展开的分类
 
   // 默认饮品类型（参考《日常养成方案》每日饮品清单；仅作选择，份量自定义）
   var DEFAULT_DRINK_TYPES = [
@@ -69,15 +70,25 @@ const DailyModule = (function () {
     html += statCard(totalStudyMin + "min", "学习时长");
     html += "</div>";
 
+    // 分类切换（平行分类，点击展开对应板块，不再全部顺次滑下）
+    html += '<div class="tabs" id="dailyTabs">';
+    html += '<div class="tab' + (activeTab === "sleep" ? " active" : "") + '" data-tab="sleep">睡眠作息</div>';
+    html += '<div class="tab' + (activeTab === "checkin" ? " active" : "") + '" data-tab="checkin">快速打卡</div>';
+    html += '<div class="tab' + (activeTab === "water" ? " active" : "") + '" data-tab="water">饮水量</div>';
+    html += '<div class="tab' + (activeTab === "diet" ? " active" : "") + '" data-tab="diet">饮食记录</div>';
+    html += '<div class="tab' + (activeTab === "task" ? " active" : "") + '" data-tab="task">今日任务</div>';
+    html += '<div class="tab' + (activeTab === "charts" ? " active" : "") + '" data-tab="charts">数据趋势</div>';
+    html += "</div>";
+
     // 睡眠作息
-    html += '<div id="sleepSection">' + renderSleepSection(sleepData) + '</div>';
+    html += '<div class="tab-panel' + (activeTab === "sleep" ? " active" : "") + '" data-panel="sleep" id="panel-sleep"><div id="sleepSection">' + renderSleepSection(sleepData) + '</div></div>';
 
     // 快速打卡
-    html += renderQuickCheckin();
+    html += '<div class="tab-panel' + (activeTab === "checkin" ? " active" : "") + '" data-panel="checkin" id="panel-checkin">' + renderQuickCheckin() + '</div>';
 
     // 饮水进度
     var waterLogHtml = renderWaterLogHtml(sleepData.waterLog);
-    html += '<div class="card">';
+    html += '<div class="tab-panel' + (activeTab === "water" ? " active" : "") + '" data-panel="water" id="panel-water"><div class="card">';
     html += '<div class="card-header"><div class="card-title">饮水量</div>';
     html += '<div class="flex gap-sm">';
     html += '<button class="btn btn-secondary btn-sm" data-water="500">+500ml</button>';
@@ -105,16 +116,16 @@ const DailyModule = (function () {
     html += '<div class="progress-label" id="waterLabel"><span>' + (waterAmount / 1000).toFixed(2) + "L / " + (settings.waterTarget / 1000).toFixed(1) + "L</span><span>" + (waterPct >= 100 ? "已达标" : Math.round(waterPct) + "%") + "</span></div>";
     html += '<div id="waterLog" class="water-log">' + waterLogHtml + '</div>';
     html += '<div class="water-tip">💡 每天 ≥2000ml，茶咖为辅；睡前 1.5 小时少喝，避免起夜</div>';
-    html += "</div>";
+    html += "</div></div>";
 
     // 饮食记录
-    html += '<div id="dietSection">' + renderDietSection() + '</div>';
+    html += '<div class="tab-panel' + (activeTab === "diet" ? " active" : "") + '" data-panel="diet" id="panel-diet"><div id="dietSection">' + renderDietSection() + '</div></div>';
 
     // 今日任务
-    html += renderTaskSection();
+    html += '<div class="tab-panel' + (activeTab === "task" ? " active" : "") + '" data-panel="task" id="panel-task">' + renderTaskSection() + '</div>';
 
     // 月度图表
-    html += renderMonthlyCharts();
+    html += '<div class="tab-panel' + (activeTab === "charts" ? " active" : "") + '" data-panel="charts" id="panel-charts">' + renderMonthlyCharts() + '</div>';
 
     setTimeout(setupEvents, 0);
     return html;
@@ -350,7 +361,29 @@ const DailyModule = (function () {
     setupWaterEvents();
     setupDietEvents();
     setupTaskEvents();
-    renderCharts();
+    setupTabEvents();
+    // 图表只在「数据趋势」标签展开时绘制（隐藏容器里 Chart.js 会画成 0 尺寸）
+    if (activeTab === "charts") renderCharts();
+  }
+
+  /* === 分类切换（平行分类展开） === */
+  function setupTabEvents() {
+    var tabsBar = document.getElementById("dailyTabs");
+    if (!tabsBar) return;
+    tabsBar.addEventListener("click", function (e) {
+      var tab = e.target.closest(".tab");
+      if (!tab) return;
+      var name = tab.dataset.tab;
+      if (name === activeTab) return;
+      activeTab = name;
+      tabsBar.querySelectorAll(".tab").forEach(function (t) {
+        t.classList.toggle("active", t === tab);
+      });
+      document.querySelectorAll(".tab-panel").forEach(function (p) {
+        p.classList.toggle("active", p.dataset.panel === name);
+      });
+      if (name === "charts") renderCharts();
+    });
   }
 
   /* === 睡眠事件 === */
