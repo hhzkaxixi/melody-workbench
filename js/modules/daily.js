@@ -108,7 +108,7 @@ const DailyModule = (function () {
     html += "</div>";
 
     // 饮食记录
-    html += renderDietSection();
+    html += '<div id="dietSection">' + renderDietSection() + '</div>';
 
     // 今日任务
     html += renderTaskSection();
@@ -630,7 +630,7 @@ const DailyModule = (function () {
           };
           MelodiDB.setDayData("diet", dietData);
           if (window.MelodiADHD) MelodiADHD.toast("已记录 " + nutri.calories + " kcal", "success");
-          App.renderPage("dashboard");
+          refreshDietSection();
         }
 
         if (photoInput.files[0]) {
@@ -652,9 +652,17 @@ const DailyModule = (function () {
         var dietData = MelodiDB.getDayData("diet") || {};
         if (dietData.meals) delete dietData.meals[mealKey];
         MelodiDB.setDayData("diet", dietData);
-        App.renderPage("dashboard");
+        refreshDietSection();
       });
     });
+  }
+
+  /* === 原地刷新饮食卡片（避免整页重渲染跳顶）=== */
+  function refreshDietSection() {
+    var box = document.getElementById("dietSection");
+    if (!box) { App.renderPage("dashboard"); return; }
+    box.innerHTML = renderDietSection();
+    setupDietEvents();
   }
 
   /* === 食物识别：输入联想 + 拍照估算 === */
