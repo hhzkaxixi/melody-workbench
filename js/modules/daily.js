@@ -129,6 +129,7 @@ const DailyModule = (function () {
   function renderSleepSection(sleepData) {
     var target = settings.sleepTarget || 7.5;
     var duration = sleepData.duration || 0;
+    var napDuration = sleepData.napDuration || 0;
     var isAdequate = duration >= target;
     var html = '<div class="card">';
     html += '<div class="card-header"><div class="card-title">睡眠作息</div>';
@@ -141,6 +142,13 @@ const DailyModule = (function () {
     if (duration > 0 && !isAdequate) {
       html += '<div id="sleepHint" style="padding:8px 12px;background:rgba(255,107,149,0.08);border-radius:var(--radius-md);font-size:var(--font-size-xs);color:var(--melodi-pink-600);margin-top:8px;">未达标，今晚提前 ' + ((target - duration) * 60).toFixed(0) + " 分钟入睡即可达标</div>";
     }
+    // 午觉
+    html += '<div class="section-divider" style="margin:14px 0 10px;"><span>午觉</span></div>';
+    html += '<div class="form-row" style="margin-bottom:12px;">';
+    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">开始</label><input type="time" class="form-input" id="napStart" value="' + (sleepData.napStart || "") + '"></div>';
+    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">结束</label><input type="time" class="form-input" id="napEnd" value="' + (sleepData.napEnd || "") + '"></div>';
+    html += '<div class="form-group" style="margin-bottom:0;max-width:100px;"><label class="form-label">午觉时长</label><div id="napDurationDisplay" style="padding:10px 0;font-size:var(--font-size-md);font-weight:600;color:' + (napDuration > 0 ? "var(--color-success)" : "var(--text-tertiary)") + ';">' + (napDuration > 0 ? napDuration.toFixed(1) + "h" : "--") + "</div></div>";
+    html += "</div>";
     html += '<button class="btn btn-primary btn-sm" id="saveSleepBtn" style="margin-top:8px;">保存睡眠记录</button>';
     html += "</div>";
     return html;
@@ -349,6 +357,8 @@ const DailyModule = (function () {
   function setupSleepEvents() {
     var bedtimeEl = document.getElementById("sleepBedtime");
     var waketimeEl = document.getElementById("sleepWaketime");
+    var napStartEl = document.getElementById("napStart");
+    var napEndEl = document.getElementById("napEnd");
     var saveBtn = document.getElementById("saveSleepBtn");
 
     function calcDuration() {
@@ -360,6 +370,18 @@ const DailyModule = (function () {
       var wtMin = parseInt(wt[0]) * 60 + parseInt(wt[1]);
       var diff = wtMin - btMin;
       if (diff < 0) diff += 24 * 60; // 跨天
+      return diff / 60;
+    }
+
+    function calcNapDuration() {
+      if (!napStartEl || !napEndEl) return 0;
+      if (!napStartEl.value || !napEndEl.value) return 0;
+      var st = napStartEl.value.split(":");
+      var et = napEndEl.value.split(":");
+      var stMin = parseInt(st[0]) * 60 + parseInt(st[1]);
+      var etMin = parseInt(et[0]) * 60 + parseInt(et[1]);
+      var diff = etMin - stMin;
+      if (diff < 0) diff += 24 * 60; // 跨天（极少数情况）
       return diff / 60;
     }
 
@@ -383,16 +405,31 @@ const DailyModule = (function () {
       }
     }
 
+    function updateNapDuration() {
+      var dur = calcNapDuration();
+      var disp = document.getElementById("napDurationDisplay");
+      if (disp) {
+        disp.textContent = dur > 0 ? dur.toFixed(1) + "h" : "--";
+        disp.style.color = dur > 0 ? "var(--color-success)" : "var(--text-tertiary)";
+      }
+    }
+
     if (bedtimeEl) bedtimeEl.addEventListener("change", updateSleepDuration);
     if (waketimeEl) waketimeEl.addEventListener("change", updateSleepDuration);
+    if (napStartEl) napStartEl.addEventListener("change", updateNapDuration);
+    if (napEndEl) napEndEl.addEventListener("change", updateNapDuration);
 
     if (saveBtn) {
       saveBtn.addEventListener("click", function () {
         var duration = calcDuration();
+        var napDuration = calcNapDuration();
         var data = MelodiDB.getDayData("sleep") || {};
         data.bedtime = bedtimeEl.value;
         data.waketime = waketimeEl.value;
         data.duration = duration;
+        data.napStart = napStartEl ? napStartEl.value : "";
+        data.napEnd = napEndEl ? napEndEl.value : "";
+        data.napDuration = napStartEl && napEndEl && napStartEl.value && napEndEl.value ? napDuration : (data.napDuration || 0);
         data.water = data.water || 0;
         MelodiDB.setDayData("sleep", data);
         App.showReminder(duration >= (settings.sleepTarget || 7.5) ? "睡眠达标！" : "已记录，注意早睡", "success");
@@ -1219,6 +1256,12 @@ const DailyModule = (function () {
       var d = monthData[dateKey];
       return d && d.duration ? parseFloat(d.duration.toFixed(1)) : null;
     });
+    var napData = sleepLabels.map(function (_, i) {
+      var day = i + 1;
+      var dateKey = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+      var d = monthData[dateKey];
+      return d && d.napDuration ? parseFloat(d.napDuration.toFixed(1)) : null;
+    });
 
     MelodiCharts.lineChart("sleepChart", sleepLabels, [
       {
@@ -1226,6 +1269,13 @@ const DailyModule = (function () {
         data: sleepData,
         color: MelodiCharts.colors.primary,
         fillColor: MelodiCharts.colors.primaryBg,
+      },
+      {
+        label: "午觉时长",
+        data: napData,
+        color: MelodiCharts.colors.orange,
+        fillColor: "rgba(0,0,0,0)",
+        fill: false,
       },
       {
         label: "目标 7.5h",

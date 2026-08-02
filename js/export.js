@@ -37,6 +37,7 @@ const MelodiExport = (function () {
 
   var FIELD_NAMES = {
     bedtime: "入睡时间", waketime: "起床时间", duration: "睡眠时长(h)",
+    napStart: "午觉开始", napEnd: "午觉结束", napDuration: "午觉时长(h)",
     water: "饮水量(ml)", calories: "热量(kcal)",
     readingMinutes: "阅读(分钟)", calligraphyMinutes: "练字(分钟)", wordsMinutes: "背词(分钟)",
     minutes: "时长(分钟)", weight: "体重(斤)", note: "备注", content: "内容",
