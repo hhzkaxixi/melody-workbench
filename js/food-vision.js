@@ -363,10 +363,15 @@ const MelodiFood = (function () {
     Object.keys(meals).forEach(function (k) {
       var m = meals[k];
       if (!m) return;
-      total.calories += parseInt(m.calories) || 0;
-      total.protein += parseFloat(m.protein) || 0;
-      total.fat += parseFloat(m.fat) || 0;
-      total.carbs += parseFloat(m.carbs) || 0;
+      // 兼容：单条对象 或 多条数组
+      var list = Array.isArray(m) ? m : [m];
+      list.forEach(function (it) {
+        if (!it) return;
+        total.calories += parseInt(it.calories) || 0;
+        total.protein += parseFloat(it.protein) || 0;
+        total.fat += parseFloat(it.fat) || 0;
+        total.carbs += parseFloat(it.carbs) || 0;
+      });
     });
     total.protein = Math.round(total.protein * 10) / 10;
     total.fat = Math.round(total.fat * 10) / 10;
