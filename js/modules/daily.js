@@ -184,6 +184,38 @@ const DailyModule = (function () {
   }
 
   /* ===== 饮食记录 ===== */
+  // 兼容旧数据：meal 可能是单个对象，也可能是对象数组。统一转成数组。
+  function mealItems(meal) {
+    if (!meal) return [];
+    if (Array.isArray(meal)) return meal;
+    return [meal];
+  }
+
+  // 渲染单条食物（含编辑/删除）
+  function renderDietItem(it, mealKey, idx) {
+    var html = '<div class="diet-item" data-meal="' + mealKey + '" data-idx="' + idx + '">';
+    html += '<div class="diet-item-main">';
+    html += '<div class="diet-meal-text">' + escapeHtml(it.text || "") + "</div>";
+    html += '<div class="diet-item-cal">' + (parseInt(it.calories) || 0) + " kcal</div>";
+    if (it.protein || it.carbs || it.fat) {
+      html += '<div class="nutri-row">';
+      html += '<span class="nutri-tag p">蛋白 ' + (it.protein || 0) + "g</span>";
+      html += '<span class="nutri-tag c">碳水 ' + (it.carbs || 0) + "g</span>";
+      html += '<span class="nutri-tag f">脂肪 ' + (it.fat || 0) + "g</span>";
+      html += "</div>";
+    }
+    if (it.photo) {
+      html += '<img src="' + it.photo + '" class="diet-meal-photo" alt="食物照片">';
+    }
+    html += "</div>";
+    html += '<div class="diet-item-actions">';
+    html += '<button class="btn btn-ghost btn-sm diet-item-edit" data-meal="' + mealKey + '" data-idx="' + idx + '">编辑</button>';
+    html += '<button class="btn btn-ghost btn-sm diet-item-del" data-meal="' + mealKey + '" data-idx="' + idx + '">删除</button>';
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
   function renderDietSection() {
     var dietData = MelodiDB.getDayData("diet") || {};
     var meals = dietData.meals || {};
@@ -194,52 +226,52 @@ const DailyModule = (function () {
       { key: "snack", label: "零食", icon: "\uD83C\uDF6B", color: "var(--color-info)" },
     ];
 
+    var totalCal = 0, totalCount = 0;
+    mealTypes.forEach(function (m) {
+      mealItems(meals[m.key]).forEach(function (it) {
+        totalCal += parseInt(it.calories) || 0;
+        totalCount++;
+      });
+    });
+
     var html = '<div class="card">';
     html += '<div class="card-header"><div class="card-title">饮食记录</div>';
-    var totalCal = 0;
-    mealTypes.forEach(function (m) {
-      var meal = meals[m.key];
-      if (meal && meal.calories) totalCal += parseInt(meal.calories) || 0;
-    });
-    html += '<span style="font-size:var(--font-size-xs);color:var(--text-tertiary);">今日热量 ' + totalCal + ' kcal</span></div>';
+    html += '<span style="font-size:var(--font-size-xs);color:var(--text-tertiary);">共 ' + totalCount + ' 项 · ' + totalCal + ' kcal</span></div>';
 
     mealTypes.forEach(function (m) {
-      var meal = meals[m.key] || {};
+      var items = mealItems(meals[m.key]);
+      var catCal = 0;
+      items.forEach(function (it) { catCal += parseInt(it.calories) || 0; });
+
       html += '<div class="diet-meal-item">';
       html += '<div class="diet-meal-header">';
       html += '<span class="diet-meal-icon">' + m.icon + "</span>";
       html += '<span class="diet-meal-label">' + m.label + "</span>";
-      if (meal.text) {
-        html += '<span class="diet-meal-cal">' + (meal.calories || 0) + " kcal</span>";
+      if (items.length > 0) {
+        html += '<span class="diet-meal-cal">' + items.length + ' 项 · ' + catCal + ' kcal</span>';
       }
       html += "</div>";
-      if (meal.text) {
-        html += '<div class="diet-meal-text">' + escapeHtml(meal.text) + "</div>";
-        if (meal.protein || meal.carbs || meal.fat) {
-          html += '<div class="nutri-row">';
-          html += '<span class="nutri-tag p">蛋白 ' + (meal.protein || 0) + "g</span>";
-          html += '<span class="nutri-tag c">碳水 ' + (meal.carbs || 0) + "g</span>";
-          html += '<span class="nutri-tag f">脂肪 ' + (meal.fat || 0) + "g</span>";
-          html += "</div>";
-        }
-        if (meal.photo) {
-          html += '<img src="' + meal.photo + '" class="diet-meal-photo" alt="食物照片">';
-        }
-        html += '<button class="btn btn-ghost btn-sm diet-meal-edit" data-meal="' + m.key + '">编辑</button>';
-      } else {
-        html += '<div class="diet-meal-input" data-meal="' + m.key + '">';
-        html += '<input type="text" class="form-input diet-input-text" placeholder="输入食物名，热量自动算，比如：米饭一碗 番茄炒蛋" style="margin-bottom:6px;">';
-        html += '<div class="food-suggest" data-meal="' + m.key + '"></div>';
-        html += '<div class="flex gap-sm" style="align-items:flex-end;flex-wrap:wrap;">';
-        html += '<input type="number" class="form-input diet-input-cal" placeholder="热量" style="width:78px;">';
-        html += '<label class="btn btn-secondary btn-sm" style="cursor:pointer;">拍照识别';
-        html += '<input type="file" accept="image/*" capture="environment" class="diet-input-photo" style="display:none;">';
-        html += "</label>";
-        html += '<button class="btn btn-primary btn-sm diet-save-btn">保存</button>';
-        html += "</div>";
-        html += '<div class="food-vision-result" data-meal="' + m.key + '"></div>';
-        html += "</div>";
-      }
+
+      // 已添加的食物列表
+      html += '<div class="diet-meal-list">';
+      items.forEach(function (it, idx) {
+        html += renderDietItem(it, m.key, idx);
+      });
+      html += "</div>";
+
+      // 常驻的「单独添加」输入框
+      html += '<div class="diet-meal-input" data-meal="' + m.key + '">';
+      html += '<input type="text" class="form-input diet-input-text" placeholder="添加' + m.label + '，比如：牛奶一杯" style="margin-bottom:6px;">';
+      html += '<div class="food-suggest" data-meal="' + m.key + '"></div>';
+      html += '<div class="flex gap-sm" style="align-items:flex-end;flex-wrap:wrap;">';
+      html += '<input type="number" class="form-input diet-input-cal" placeholder="热量" style="width:78px;">';
+      html += '<label class="btn btn-secondary btn-sm" style="cursor:pointer;">拍照识别';
+      html += '<input type="file" accept="image/*" capture="environment" class="diet-input-photo" style="display:none;">';
+      html += "</label>";
+      html += '<button class="btn btn-primary btn-sm diet-add-btn">添加</button>';
+      html += "</div>";
+      html += '<div class="food-vision-result" data-meal="' + m.key + '"></div>';
+      html += "</div>";
       html += "</div>";
     });
 
@@ -599,70 +631,139 @@ const DailyModule = (function () {
     }
   }
 
+  /* 单独添加一条食物到对应餐别（点击「添加」或输入框回车都触发） */
+  function handleAddMeal(wrapper) {
+    if (!wrapper) return;
+    var mealKey = wrapper.dataset.meal;
+    var text = wrapper.querySelector(".diet-input-text").value.trim();
+    var cal = wrapper.querySelector(".diet-input-cal").value;
+    var photoInput = wrapper.querySelector(".diet-input-photo");
+
+    if (!text && !(photoInput && photoInput.files[0])) {
+      App.showReminder("请填写食物详情或拍照", "warning");
+      return;
+    }
+
+    function addMeal(photoData) {
+      var dietData = MelodiDB.getDayData("diet") || {};
+      if (!dietData.meals) dietData.meals = {};
+      // 兼容旧数据：若该餐别原为单个对象，先转成数组
+      if (!Array.isArray(dietData.meals[mealKey])) {
+        dietData.meals[mealKey] = mealItems(dietData.meals[mealKey]);
+      }
+      // 没手填热量就用食物库自动估算，顺带带出营养成分
+      var nutri = { calories: parseInt(cal) || 0, protein: 0, fat: 0, carbs: 0 };
+      if (typeof MelodiFood !== "undefined" && text) {
+        var parsed = MelodiFood.parseText(text);
+        if (parsed.items.length > 0) {
+          if (!cal) nutri.calories = parsed.total.calories;
+          nutri.protein = parsed.total.protein;
+          nutri.fat = parsed.total.fat;
+          nutri.carbs = parsed.total.carbs;
+        }
+      }
+      dietData.meals[mealKey].push({
+        text: text,
+        calories: nutri.calories,
+        protein: nutri.protein,
+        fat: nutri.fat,
+        carbs: nutri.carbs,
+        photo: photoData || null,
+      });
+      MelodiDB.setDayData("diet", dietData);
+      if (window.MelodiADHD) MelodiADHD.toast("已添加 " + nutri.calories + " kcal", "success");
+      refreshDietSection();
+    }
+
+    if (photoInput && photoInput.files[0]) {
+      compressImage(photoInput.files[0], 400, function (base64) {
+        addMeal(base64);
+      });
+    } else {
+      addMeal(null);
+    }
+  }
+
   /* === 饮食事件 === */
   function setupDietEvents() {
-    // 保存按钮
-    document.querySelectorAll(".diet-save-btn").forEach(function (btn) {
+    // 每餐独立添加：按钮点击 + 输入框回车
+    document.querySelectorAll(".diet-meal-input").forEach(function (wrapper) {
+      var btn = wrapper.querySelector(".diet-add-btn");
+      if (btn) btn.addEventListener("click", function () { handleAddMeal(wrapper); });
+      var textInput = wrapper.querySelector(".diet-input-text");
+      if (textInput) {
+        textInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") { e.preventDefault(); handleAddMeal(wrapper); }
+        });
+      }
+    });
+
+    setupFoodRecognition();
+
+    // 删除单条食物
+    document.querySelectorAll(".diet-item-del").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        var wrapper = this.closest(".diet-meal-input");
-        if (!wrapper) return;
-        var mealKey = wrapper.dataset.meal;
-        var text = wrapper.querySelector(".diet-input-text").value.trim();
-        var cal = wrapper.querySelector(".diet-input-cal").value;
-        var photoInput = wrapper.querySelector(".diet-input-photo");
+        var mealKey = this.dataset.meal;
+        var idx = parseInt(this.dataset.idx);
+        var dietData = MelodiDB.getDayData("diet") || {};
+        if (!dietData.meals) dietData.meals = {};
+        var arr = mealItems(dietData.meals[mealKey]);
+        if (idx >= 0 && idx < arr.length) arr.splice(idx, 1);
+        dietData.meals[mealKey] = arr;
+        MelodiDB.setDayData("diet", dietData);
+        refreshDietSection();
+      });
+    });
 
-        if (!text && !photoInput.files[0]) {
-          App.showReminder("请填写食物详情或拍照", "warning");
-          return;
-        }
-
-        function saveMeal(photoData) {
-          var dietData = MelodiDB.getDayData("diet") || {};
-          if (!dietData.meals) dietData.meals = {};
-          // 没手填热量就用食物库自动估算，顺带带出营养成分
-          var nutri = { calories: parseInt(cal) || 0, protein: 0, fat: 0, carbs: 0 };
-          if (typeof MelodiFood !== "undefined" && text) {
-            var parsed = MelodiFood.parseText(text);
+    // 行内编辑单条食物
+    document.querySelectorAll(".diet-item-edit").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var mealKey = this.dataset.meal;
+        var idx = parseInt(this.dataset.idx);
+        var dietData = MelodiDB.getDayData("diet") || {};
+        var arr = mealItems(dietData.meals ? dietData.meals[mealKey] : null);
+        var it = arr[idx];
+        if (!it) return;
+        var row = document.querySelector('.diet-item[data-meal="' + mealKey + '"][data-idx="' + idx + '"]');
+        if (!row) return;
+        row.innerHTML =
+          '<div class="diet-item-edit-form">' +
+          '<input type="text" class="form-input diet-edit-text" value="' + escapeHtml(it.text || "") + '" style="margin-bottom:6px;">' +
+          '<div class="flex gap-sm" style="align-items:flex-end;flex-wrap:wrap;">' +
+          '<input type="number" class="form-input diet-edit-cal" value="' + (parseInt(it.calories) || 0) + '" placeholder="热量" style="width:78px;">' +
+          '<button class="btn btn-primary btn-sm diet-edit-save" data-meal="' + mealKey + '" data-idx="' + idx + '">保存</button>' +
+          '<button class="btn btn-ghost btn-sm diet-edit-cancel">取消</button>' +
+          "</div></div>";
+        var saveBtn = row.querySelector(".diet-edit-save");
+        var cancelBtn = row.querySelector(".diet-edit-cancel");
+        saveBtn.addEventListener("click", function () {
+          var newText = row.querySelector(".diet-edit-text").value.trim();
+          var newCal = row.querySelector(".diet-edit-cal").value;
+          var nutri = { calories: parseInt(newCal) || 0, protein: it.protein || 0, fat: it.fat || 0, carbs: it.carbs || 0 };
+          if (typeof MelodiFood !== "undefined" && newText && (!newCal || parseInt(newCal) === 0)) {
+            var parsed = MelodiFood.parseText(newText);
             if (parsed.items.length > 0) {
-              if (!cal) nutri.calories = parsed.total.calories;
+              nutri.calories = parsed.total.calories;
               nutri.protein = parsed.total.protein;
               nutri.fat = parsed.total.fat;
               nutri.carbs = parsed.total.carbs;
             }
           }
-          dietData.meals[mealKey] = {
-            text: text,
+          arr[idx] = {
+            text: newText,
             calories: nutri.calories,
             protein: nutri.protein,
             fat: nutri.fat,
             carbs: nutri.carbs,
-            photo: photoData || null,
+            photo: it.photo || null,
           };
-          MelodiDB.setDayData("diet", dietData);
-          if (window.MelodiADHD) MelodiADHD.toast("已记录 " + nutri.calories + " kcal", "success");
+          var d2 = MelodiDB.getDayData("diet") || {};
+          if (!d2.meals) d2.meals = {};
+          d2.meals[mealKey] = arr;
+          MelodiDB.setDayData("diet", d2);
           refreshDietSection();
-        }
-
-        if (photoInput.files[0]) {
-          compressImage(photoInput.files[0], 400, function (base64) {
-            saveMeal(base64);
-          });
-        } else {
-          saveMeal(null);
-        }
-      });
-    });
-
-    setupFoodRecognition();
-
-    // 编辑按钮（重新填写这一餐）
-    document.querySelectorAll(".diet-meal-edit").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var mealKey = this.dataset.meal;
-        var dietData = MelodiDB.getDayData("diet") || {};
-        if (dietData.meals) delete dietData.meals[mealKey];
-        MelodiDB.setDayData("diet", dietData);
-        refreshDietSection();
+        });
+        cancelBtn.addEventListener("click", function () { refreshDietSection(); });
       });
     });
   }
@@ -1118,7 +1219,9 @@ const DailyModule = (function () {
       if (!d || !d.meals) return 0;
       var total = 0;
       Object.keys(d.meals).forEach(function (k) {
-        total += parseInt(d.meals[k].calories) || 0;
+        mealItems(d.meals[k]).forEach(function (it) {
+          total += parseInt(it.calories) || 0;
+        });
       });
       return total;
     });
