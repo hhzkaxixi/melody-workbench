@@ -18,7 +18,7 @@ const MelodiCalendar = (function () {
     { key: "mask", label: "面膜", icon: "\uD83C\uDFAD", module: "skincare", freq: "alt" },
     { key: "clean_mask", label: "清洁护理", icon: "\uD83E\uDDF4", module: "skincare", freq: "weekly" },
     { key: "sub_podcast", label: "sub/播客", icon: "\uD83C\uDFA7", module: "leisure", freq: "daily" },
-    { key: "perfume", label: "香水", icon: "\uD83C\uDF38", module: "leisure", freq: "daily" },
+    { key: "perfume", label: "香水", icon: "\uD83D\uDC85", module: "leisure", freq: "daily" },
     { key: "movie", label: "观影", icon: "\uD83C\uDFAC", module: "leisure", freq: "weekly" },
     { key: "collection", label: "整理收藏", icon: "\uD83D\uDDC2\uFE0F", module: "leisure", freq: "weekly" },
   ];

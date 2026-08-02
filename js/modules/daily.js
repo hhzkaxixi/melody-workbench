@@ -158,7 +158,7 @@ const DailyModule = (function () {
       { key: "words", label: "背词", icon: "\uD83D\uDD24", module: "growth" },
       { key: "exercise", label: "运动", icon: "\uD83D\uDCAA", module: "exercise" },
       { key: "sub_podcast", label: "sub/播客", icon: "\uD83C\uDFA7", module: "leisure" },
-      { key: "perfume", label: "香水", icon: "\uD83C\uDFAD", module: "leisure" },
+      { key: "perfume", label: "香水", icon: "\uD83D\uDC85", module: "leisure" },
     ];
     var todayCheckins = {};
     ["wellness", "skincare", "growth", "leisure"].forEach(function (m) {

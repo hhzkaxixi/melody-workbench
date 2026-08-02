@@ -32,7 +32,7 @@ const FIXED_NAV_ITEMS = [
   { route: "planning", label: "人生规划", icon: "planning", fixed: true },
   { route: "growth", label: "自我成长", icon: "growth", fixed: true },
   { route: "study", label: "学习板块", icon: "study", fixed: true },
-  { route: "fitness", label: "身材管理", icon: "fitness", fixed: true },
+  { route: "fitness", label: "日常管理", icon: "fitness", fixed: true },
   { route: "fortune", label: "运势分析", icon: "fortune", fixed: true },
   { route: "export", label: "数据管理", icon: "export", fixed: true },
 ];

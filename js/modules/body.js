@@ -1,5 +1,5 @@
 /* ============================================
-   美乐蒂工作台 - 保养护肤身材管理模块
+   美乐蒂工作台 - 保养护肤日常管理模块
    运动轮动 · 皮肤管理 · 养生习惯 · 休闲习惯
    ============================================ */
 
@@ -349,7 +349,7 @@ const BodyModule = (function () {
     var leisureItems = [
       { key: "sub_podcast", label: "睡前sub/播客", icon: "\uD83C\uDFA7", desc: "睡前收听，放松身心" },
       { key: "movie", label: "观影/纪录片", icon: "\uD83C\uDFAC", desc: "每周至少1部，记录感悟" },
-      { key: "perfume", label: "香水使用", icon: "\uD83C\uDFAD", desc: "今日喷了什么香？" },
+      { key: "perfume", label: "香水使用", icon: "\uD83D\uDC85", desc: "今日喷了什么香？" },
       { key: "album_organize", label: "相册整理", icon: "\uD83D\uDCF7", desc: "整理手机相册，删除重复" },
       { key: "collection_organize", label: "收藏整理", icon: "\uD83D\uDDC2\uFE0F", desc: "整理抖音/小红书收藏" },
     ];
