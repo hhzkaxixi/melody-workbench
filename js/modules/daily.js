@@ -76,7 +76,6 @@ const DailyModule = (function () {
     html += '<div class="tab' + (activeTab === "checkin" ? " active" : "") + '" data-tab="checkin">快速打卡</div>';
     html += '<div class="tab' + (activeTab === "water" ? " active" : "") + '" data-tab="water">饮水量</div>';
     html += '<div class="tab' + (activeTab === "diet" ? " active" : "") + '" data-tab="diet">饮食记录</div>';
-    html += '<div class="tab' + (activeTab === "task" ? " active" : "") + '" data-tab="task">今日任务</div>';
     html += '<div class="tab' + (activeTab === "charts" ? " active" : "") + '" data-tab="charts">数据趋势</div>';
     html += "</div>";
 
@@ -120,9 +119,6 @@ const DailyModule = (function () {
 
     // 饮食记录
     html += '<div class="tab-panel' + (activeTab === "diet" ? " active" : "") + '" data-panel="diet" id="panel-diet"><div id="dietSection">' + renderDietSection() + '</div></div>';
-
-    // 今日任务
-    html += '<div class="tab-panel' + (activeTab === "task" ? " active" : "") + '" data-panel="task" id="panel-task">' + renderTaskSection() + '</div>';
 
     // 月度图表
     html += '<div class="tab-panel' + (activeTab === "charts" ? " active" : "") + '" data-panel="charts" id="panel-charts">' + renderMonthlyCharts() + '</div>';
@@ -360,7 +356,6 @@ const DailyModule = (function () {
     setupCheckinEvents();
     setupWaterEvents();
     setupDietEvents();
-    setupTaskEvents();
     setupTabEvents();
     // 图表只在「数据趋势」标签展开时绘制（隐藏容器里 Chart.js 会画成 0 尺寸）
     if (activeTab === "charts") renderCharts();
@@ -983,8 +978,8 @@ const DailyModule = (function () {
   }
 
   /* === 任务事件 === */
-  function setupTaskEvents() {
-    archiveYesterdayTasks();
+  /* 任务管理事件绑定（被人生规划「每日」面板复用，故抽出来） */
+  function bindTaskManager() {
     var addBtn = document.getElementById("addTaskBtn");
     var taskInput = document.getElementById("taskInput");
     if (addBtn && taskInput) {
@@ -1382,5 +1377,5 @@ const DailyModule = (function () {
     reader.readAsDataURL(file);
   }
 
-  return { render: render, archiveYesterdayTasks: archiveYesterdayTasks };
+  return { render: render, archiveYesterdayTasks: archiveYesterdayTasks, renderTaskManager: renderTaskSection, bindTaskManager: bindTaskManager };
 })();

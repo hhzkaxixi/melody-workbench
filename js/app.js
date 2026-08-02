@@ -118,10 +118,10 @@ const App = (function () {
 
   function renderPlanning() {
     var levels = [
-      { key: "year", label: "年度总目标", placeholder: "写下今年的核心目标（每年1月1日开启新篇）..." },
-      { key: "month", label: "月度计划", placeholder: "本月拆分计划（每月1日开启）..." },
-      { key: "week", label: "本周细分", placeholder: "本周具体任务（每周一开启）..." },
       { key: "day", label: "今日安排", placeholder: "今天要做的具体事..." },
+      { key: "week", label: "本周细分", placeholder: "本周具体任务（每周一开启）..." },
+      { key: "month", label: "月度计划", placeholder: "本月拆分计划（每月1日开启）..." },
+      { key: "year", label: "年度总目标", placeholder: "写下今年的核心目标（每年1月1日开启新篇）..." },
     ];
 
     // 一次性迁移：旧版按天存储的计划迁移到当前周期键，避免丢失已填内容
@@ -139,7 +139,7 @@ const App = (function () {
 
     var html = '<div class="card" style="background:linear-gradient(135deg,var(--melodi-pink-100),var(--melodi-pink-50));border:none;margin-bottom:var(--space-md);">';
     html += '<div style="font-size:var(--font-size-md);font-weight:600;color:var(--melodi-pink-700);">四级时间规划闭环</div>';
-    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">年度总目标 → 月度拆分 → 每周细分 → 每日安排；每个周期下分别做复盘</div>';
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">每日安排 → 每周细分 → 月度计划 → 年度总目标；每个周期下分别做复盘</div>';
     html += "</div>";
 
     html += '<div class="card"><div class="card-header"><div class="card-title">规划详情</div></div>';
@@ -176,10 +176,10 @@ const App = (function () {
 
       html += '<div id="history_' + l.key + '" style="margin-top:12px;"></div>';
 
-      // 今日安排：与今日总览四象限任务实时同步（完成划线、双向勾选）
+      // 今日安排：今日任务已归纳到此处（四象限管理，作为唯一入口）
       if (isDay) {
-        html += '<div class="section-divider"><span class="section-divider-label">今日任务（与今日总览同步）</span></div>';
-        html += '<div id="planDayTasks">' + renderPlanDayTasks() + "</div>";
+        html += '<div class="section-divider"><span class="section-divider-label">今日任务（四象限）</span></div>';
+        html += DailyModule.renderTaskManager();
       }
 
       // 各周期分别复盘
@@ -199,59 +199,7 @@ const App = (function () {
     return html;
   }
 
-  var PLAN_QUAD_LABEL = { q1: "重要紧急", q2: "重要不紧急", q3: "紧急不重要", q4: "不重要不紧急" };
   var PLAN_REVIEW_LABEL = { year: "年度复盘", month: "月度复盘", week: "本周复盘", day: "今日复盘" };
-
-  /* 今日安排面板：渲染今日总览四象限任务（实时同步，完成划线） */
-  function renderPlanDayTasks() {
-    var todayKey = MelodiDB.todayKey();
-    var tasks = MelodiDB.getList("tasks").filter(function (t) { return (!t.date || t.date === todayKey); });
-    if (tasks.length === 0) {
-      return '<div class="empty-state-text" style="padding:8px 0;">今日总览还没有任务，去「今日总览」四象限添加吧</div>';
-    }
-    var groups = { q1: [], q2: [], q3: [], q4: [] };
-    tasks.forEach(function (t) {
-      var q = t.quadrant || "q2";
-      if (!groups[q]) groups[q] = [];
-      groups[q].push(t);
-    });
-    var html = "";
-    ["q1", "q2", "q3", "q4"].forEach(function (q) {
-      if (!groups[q] || groups[q].length === 0) return;
-      html += '<div class="plan-task-group-label">' + (PLAN_QUAD_LABEL[q] || q) + "</div>";
-      groups[q].forEach(function (t) {
-        var done = !!t.done;
-        html += '<label class="plan-task' + (done ? " done" : "") + '">';
-        html += '<input type="checkbox" class="plan-task-check" data-task-id="' + t.id + '"' + (done ? " checked" : "") + ">";
-        html += '<span class="plan-task-text">' + escapeHtml(t.text) + "</span>";
-        html += "</label>";
-      });
-    });
-    return html;
-  }
-
-  function refreshPlanDayTasks() {
-    var box = document.getElementById("planDayTasks");
-    if (!box) return;
-    box.innerHTML = renderPlanDayTasks();
-    bindPlanDayTaskChecks(box);
-  }
-
-  function bindPlanDayTaskChecks(scope) {
-    if (!scope) return;
-    scope.querySelectorAll(".plan-task-check").forEach(function (cb) {
-      cb.addEventListener("change", function () {
-        var id = this.dataset.taskId;
-        var checked = this.checked;
-        MelodiDB.updateInList("tasks", id, {
-          done: checked,
-          status: checked ? "done" : "todo",
-          completedAt: checked ? new Date().toISOString() : null,
-        });
-        refreshPlanDayTasks();
-      });
-    });
-  }
 
   function setupPlanningEvents() {
     document.querySelectorAll("#planningTabs .tab").forEach(function (tab) {
@@ -295,8 +243,8 @@ const App = (function () {
       });
     });
 
-    // 今日安排：四象限任务清单双向勾选
-    bindPlanDayTaskChecks(document);
+    // 今日安排：四象限任务管理（添加/勾选/排序），已归纳到人生规划每日
+    if (typeof DailyModule !== "undefined" && DailyModule.bindTaskManager) DailyModule.bindTaskManager();
 
     document.querySelectorAll("[data-copy]").forEach(function (btn) {
       btn.addEventListener("click", function () {
