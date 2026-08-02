@@ -1492,3 +1492,24 @@ input[type="time"] {
     flex-basis: 100%;
   }
 }
+
+/* ========== 区块分隔条（运动规划/休闲习惯内嵌 part 用） ========== */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 2px 16px;
+}
+.section-divider::before,
+.section-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+.section-divider-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
