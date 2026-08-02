@@ -1,5 +1,5 @@
 /* 美乐蒂工作台 Service Worker - 离线缓存 */
-const CACHE_NAME = "melodi-workbench-v25";
+const CACHE_NAME = "melodi-workbench-v26";
 const ASSETS = [
   "./",
   "./index.html",
@@ -64,34 +64,18 @@ self.addEventListener("fetch", (event) => {
   // 仅处理同源请求
   if (url.origin !== self.location.origin) return;
 
-  // HTML 导航：网络优先，保证 iOS 每次打开都能拿到最新页面（在线时）
-  if (event.request.mode === "navigate" || url.pathname.endsWith(".html")) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => caches.match(event.request).then((c) => c || caches.match("./index.html")))
-    );
-    return;
-  }
-
-  // 静态资源：缓存优先，离线可用
+  // 全部同源 GET：网络优先 + 缓存兜底。
+  // 在线时必定拿到最新版（根治 iOS 对已加主屏 PWA 的 SW 不激活卡顿）；
+  // 离线时回退到缓存，保证仍可用。
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          if (!response || response.status !== 200) return response;
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === "basic") {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match("./index.html"));
-    })
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request).then((c) => c || caches.match("./index.html")))
   );
 });
