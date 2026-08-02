@@ -17,7 +17,7 @@ const App = (function () {
     export: function () { return MelodiExport.render(); },
     planning: renderPlanning,
     fitness: function () { return BodyModule.render(); },
-    fortune: renderFortune,
+    fortune: function () { return FortuneModule.render(); },
     finance: renderFinance,
     savings: renderSavings,
     english: renderEnglish,
@@ -255,79 +255,6 @@ const App = (function () {
   }
 
   /* ===== 运动锻炼已移至 BodyModule ===== */
-
-  /* ===== 运势分析 ===== */
-  function renderFortune() {
-    var settings = MelodiDB.getSettings();
-    var birthday = settings.birthday || "2000-10-22";
-    var today = MelodiDB.todayKey();
-    var fortunes = generateFortune(birthday, today);
-
-    var html = '<div class="card" style="background:linear-gradient(135deg,var(--melodi-pink-100),var(--melodi-pink-50));border:none;">';
-    html += '<div style="text-align:center;padding:8px 0;">';
-    html += '<div style="font-size:var(--font-size-xl);font-weight:600;color:var(--melodi-pink-700);">今日运势</div>';
-    html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">生日：' + birthday + " · " + today + "</div>";
-    html += "</div></div>";
-
-    html += '<div class="stat-grid">';
-    html += statCard(fortunes.luckyScore + "/100", "综合运势");
-    html += statCard(fortunes.luckyColor, "幸运颜色");
-    html += statCard(fortunes.luckyNumber, "幸运数字");
-    html += statCard(fortunes.luckyDirection, "幸运方位");
-    html += "</div>";
-
-    html += '<div class="card"><div class="card-header"><div class="card-title">今日提示</div></div>';
-    html += '<div style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.8;">' + fortunes.tip + "</div></div>";
-
-    html += '<div class="card"><div class="card-header"><div class="card-title">每日励志</div></div>';
-    html += '<div style="font-size:var(--font-size-md);color:var(--melodi-pink-600);font-weight:500;">' + fortunes.quote.cn + "</div>";
-    html += '<div style="font-size:var(--font-size-sm);color:var(--text-tertiary);margin-top:8px;font-style:italic;">' + fortunes.quote.en + "</div></div>";
-
-    return html;
-  }
-
-  function generateFortune(birthday, dateStr) {
-    var seed = hashStr(birthday + dateStr);
-    var luckyScore = 60 + (seed % 40);
-    var colors = ["粉色", "白色", "浅蓝", "薄荷绿", "鹅黄", "薰衣草紫", "珊瑚橙"];
-    var directions = ["东方", "南方", "西方", "北方", "东南", "西南", "西北", "东北"];
-    var tips = [
-      "今天适合整理收纳，清理掉不必要的物品和思绪，轻装上阵。",
-      "保持节奏，不必追求完美，完成比完美更重要。",
-      "多喝水，多走动，身体舒服了心情自然好。",
-      "今天可以尝试一件小事，哪怕只做5分钟也好。",
-      "给自己一个拥抱，你已经做得很好了。",
-      "今天适合安静阅读，减少社交媒体的时间。",
-      "主动跟朋友聊聊天，能量会在交流中流动。",
-      "今天财运不错，可以看看理财相关的内容。",
-      "适合运动，哪怕是拉伸10分钟也好。",
-    ];
-    var quotes = [
-      { cn: "每一个微小的坚持，都是给未来自己的礼物。", en: "Every small persistence is a gift to your future self." },
-      { cn: "不必着急，按照自己的节奏来。", en: "No need to rush, go at your own pace." },
-      { cn: "今天的选择，决定明天的模样。", en: "Today's choices shape tomorrow's silhouette." },
-      { cn: "温柔且有力量地活着。", en: "Live gently but with strength." },
-      { cn: "小步前进，也是一种前进。", en: "Small steps forward are still steps forward." },
-      { cn: "你值得拥有美好的一切。", en: "You deserve all the beautiful things." },
-      { cn: "专注当下，未来自会明朗。", en: "Focus on the present, the future will become clear." },
-    ];
-    return {
-      luckyScore: luckyScore,
-      luckyColor: colors[seed % colors.length],
-      luckyNumber: (seed % 9) + 1,
-      luckyDirection: directions[(seed >> 3) % directions.length],
-      tip: tips[(seed >> 2) % tips.length],
-      quote: quotes[(seed >> 4) % quotes.length],
-    };
-  }
-
-  function hashStr(s) {
-    var h = 0;
-    for (var i = 0; i < s.length; i++) {
-      h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-    }
-    return Math.abs(h);
-  }
 
   /* ===== 英语学习（与单词板块数据互通）===== */
   function renderEnglish() {
@@ -925,6 +852,9 @@ const App = (function () {
     html += '<div class="card"><div class="card-header"><div class="card-title">个人信息</div></div>';
     html += '<div class="form-group"><label class="form-label">生日（运势分析用）</label>';
     html += '<input type="date" class="form-input" id="birthdayInput" value="' + (settings.birthday || "2000-10-22") + '"></div>';
+    html += '<div style="font-size:var(--font-size-xs);color:var(--text-tertiary);margin:-6px 0 10px;">北京时间为 2000-10-23，按出生地真太阳时校正为 10-22 晚 11 点左右，故用 2000-10-22。</div>';
+    html += '<div class="form-group"><label class="form-label">八字（年 月 日 时，空格分隔）</label>';
+    html += '<input type="text" class="form-input" id="baziInput" value="' + escapeHtml(settings.bazi || "庚辰 丙戌 甲寅 甲子") + '" placeholder="庚辰 丙戌 甲寅 甲子"></div>';
     html += '<div class="form-group"><label class="form-label">睡眠目标 (小时)</label>';
     html += '<input type="number" class="form-input" id="sleepTargetInput" value="' + (settings.sleepTarget || 7.5) + '" step="0.5" style="width:100px;"></div>';
     html += '<div class="form-group"><label class="form-label">饮水目标 (ml)</label>';
@@ -1037,6 +967,7 @@ const App = (function () {
       if (savePersonalBtn) savePersonalBtn.addEventListener("click", function () {
         MelodiDB.setSettings({
           birthday: document.getElementById("birthdayInput").value,
+          bazi: (document.getElementById("baziInput").value || "庚辰 丙戌 甲寅 甲子").trim(),
           sleepTarget: parseFloat(document.getElementById("sleepTargetInput").value) || 7.5,
           waterTarget: parseInt(document.getElementById("waterTargetInput").value) || 2000,
         });
