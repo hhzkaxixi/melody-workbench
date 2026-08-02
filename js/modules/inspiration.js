@@ -2,6 +2,7 @@
    美乐蒂工作台 - 灵感清单模块
    无聊时翻出来挑一件充实自己 · 不要求每天做
    类型：创意技能 / 观影 / 听音 / 整理收纳（整理类带软提醒）
+   本模块以「part」形式内嵌到「休闲习惯」标签页中。
    ============================================ */
 
 const InspirationModule = (function () {
@@ -25,7 +26,11 @@ const InspirationModule = (function () {
   // 整理类软提醒周期（天）：超过这个天数轻推一下，不做硬闹钟
   var CLEANUP_PERIOD = 30;
 
-  function render() {
+  // 容器 id（内嵌在 body.js 的休闲习惯标签页内）
+  var ROOT_ID = "inspirationPart";
+
+  /* 仅渲染灵感清单这一部分（不含整页外壳），交给 body.js 嵌入休闲习惯 */
+  function renderPart() {
     var items = MelodiDB.getList("inspiration");
     var doneCount = items.filter(function (i) { return i.done; }).length;
     var cleanupNudge = buildCleanupNudge(items);
@@ -88,7 +93,6 @@ const InspirationModule = (function () {
       });
     }
 
-    setTimeout(setupEvents, 0);
     return html;
   }
 
@@ -131,10 +135,10 @@ const InspirationModule = (function () {
     return "🧹 有 " + due.length + " 件整理任务可以安排啦（删图库 / 整理收藏）";
   }
 
-  function setupEvents() {
-    var titleInput = document.getElementById("inspTitle");
-    var typeInput = document.getElementById("inspType");
-    var addBtn = document.getElementById("inspAddBtn");
+  /* 绑定灵感 part 内的事件（在 #inspirationPart 容器内） */
+  function bindPart() {
+    var root = document.getElementById(ROOT_ID);
+    if (!root) return;
 
     function addItem(title, type) {
       title = (title || "").trim();
@@ -147,10 +151,13 @@ const InspirationModule = (function () {
         lastDone: null,
         createdAt: new Date().toISOString(),
       });
-      App.renderPageKeepScroll("inspiration");
+      refreshPart();
       App.showReminder("已加入灵感清单", "success");
     }
 
+    var titleInput = root.querySelector("#inspTitle");
+    var typeInput = root.querySelector("#inspType");
+    var addBtn = root.querySelector("#inspAddBtn");
     if (addBtn && titleInput) {
       addBtn.addEventListener("click", function () {
         addItem(titleInput.value, typeInput ? typeInput.value : "creative");
@@ -161,15 +168,14 @@ const InspirationModule = (function () {
     }
 
     // 预设快捷添加
-    document.querySelectorAll(".insp-preset-chip").forEach(function (chip) {
-      chip = chip;
+    root.querySelectorAll(".insp-preset-chip").forEach(function (chip) {
       chip.addEventListener("click", function () {
         addItem(this.dataset.title, this.dataset.type);
       });
     });
 
     // 标记做过 / 撤销
-    document.querySelectorAll(".insp-done-btn").forEach(function (btn) {
+    root.querySelectorAll(".insp-done-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var id = this.dataset.id;
         var item = MelodiDB.getList("inspiration").find(function (i) { return i.id === id; });
@@ -179,18 +185,26 @@ const InspirationModule = (function () {
         } else {
           MelodiDB.updateInList("inspiration", id, { done: true, lastDone: new Date().toISOString() });
         }
-        App.renderPageKeepScroll("inspiration");
+        refreshPart();
       });
     });
 
     // 删除
-    document.querySelectorAll(".insp-del-btn").forEach(function (btn) {
+    root.querySelectorAll(".insp-del-btn").forEach(function (btn) {
       btn.addEventListener("click", function (e) {
         e.stopPropagation();
         MelodiDB.removeFromList("inspiration", this.dataset.id);
-        App.renderPageKeepScroll("inspiration");
+        refreshPart();
       });
     });
+  }
+
+  /* 原地重绘灵感 part 并重新绑定（不整页刷新，避免跳顶） */
+  function refreshPart() {
+    var root = document.getElementById(ROOT_ID);
+    if (!root) return;
+    root.innerHTML = renderPart();
+    bindPart();
   }
 
   /* ===== 工具 ===== */
@@ -206,6 +220,6 @@ const InspirationModule = (function () {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
   }
 
-  return { render: render };
+  return { renderPart: renderPart, bindPart: bindPart, refreshPart: refreshPart };
 })();
 window.InspirationModule = InspirationModule;
