@@ -1,5 +1,5 @@
 /* 美乐蒂工作台 Service Worker - 离线缓存 */
-const CACHE_NAME = "melodi-workbench-v19";
+const CACHE_NAME = "melodi-workbench-v20";
 const ASSETS = [
   "./",
   "./index.html",
@@ -51,8 +51,36 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// 前端可发消息强制跳过等待（立即激活新版本，便于 iOS 点按更新）
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  // 仅处理同源请求
+  if (url.origin !== self.location.origin) return;
+
+  // HTML 导航：网络优先，保证 iOS 每次打开都能拿到最新页面（在线时）
+  if (event.request.mode === "navigate" || url.pathname.endsWith(".html")) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((c) => c || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // 静态资源：缓存优先，离线可用
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
@@ -60,14 +88,10 @@ self.addEventListener("fetch", (event) => {
         .then((response) => {
           if (!response || response.status !== 200) return response;
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;
         })
-        .catch(() => {
-          return caches.match("./index.html");
-        });
+        .catch(() => caches.match("./index.html"));
     })
   );
 });
