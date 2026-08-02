@@ -876,6 +876,7 @@ const App = (function () {
     html += '<button class="btn btn-secondary btn-sm" id="exportDataBtn">导出全部数据</button>';
     html += '<button class="btn btn-secondary btn-sm" id="importDataBtn">导入数据</button>';
     html += '<button class="btn btn-ghost btn-sm" id="clearDataBtn" style="color:var(--color-danger);">清空所有数据</button>';
+    html += '<button class="btn btn-ghost btn-sm" id="forceRefreshBtn" style="margin-left:8px;">强制刷新应用（更新到最新版，不删除数据）</button>';
     html += "</div>";
     html += '<div style="margin-top:12px;font-size:var(--font-size-xs);color:var(--text-tertiary);">本地存储占用：' + storageSize + " KB</div>";
     html += "</div>";
@@ -992,6 +993,27 @@ const App = (function () {
         }
         App.showReminder("所有数据已清空", "success");
         setTimeout(function () { location.reload(); }, 1000);
+      });
+
+      // 强制刷新（注销旧 Service Worker 后重加载，安全更新应用，绝不删除本地数据）
+      // 用于替代「删除主屏图标重新添加」——后者在 iOS 上会清空该 PWA 的全部本地存储
+      var frBtn = document.getElementById("forceRefreshBtn");
+      if (frBtn) frBtn.addEventListener("click", function () {
+        App.showReminder("正在刷新到最新版本...", "");
+        var regs = (navigator.serviceWorker && navigator.serviceWorker.getRegistrations)
+          ? navigator.serviceWorker.getRegistrations()
+          : Promise.resolve([]);
+        Promise.resolve(regs).then(function (rs) {
+          var chain = Promise.resolve();
+          (rs || []).forEach(function (r) {
+            chain = chain.then(function () { return r.unregister(); });
+          });
+          return chain;
+        }).then(function () {
+          setTimeout(function () { location.reload(); }, 300);
+        }).catch(function () {
+          location.reload();
+        });
       });
 
       // 保存个人信息
