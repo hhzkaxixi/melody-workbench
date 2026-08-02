@@ -28,6 +28,7 @@ const BodyModule = (function () {
     html += '<div class="tab" data-tab="skincare">皮肤管理</div>';
     html += '<div class="tab" data-tab="wellness">养生习惯</div>';
     html += '<div class="tab" data-tab="leisure">休闲习惯</div>';
+    html += '<div class="tab" data-tab="weight">体重追踪</div>';
     html += "</div>";
 
     // 运动规划
@@ -48,6 +49,11 @@ const BodyModule = (function () {
     // 休闲习惯
     html += '<div class="tab-panel" data-panel="leisure">';
     html += renderLeisureSection();
+    html += "</div>";
+
+    // 体重追踪
+    html += '<div class="tab-panel" data-panel="weight">';
+    html += renderWeightSection();
     html += "</div>";
 
     setTimeout(setupEvents, 0);
@@ -412,6 +418,48 @@ const BodyModule = (function () {
   }
 
   /* ===== 事件绑定 ===== */
+  /* ===== 体重追踪 ===== */
+  function renderWeightSection() {
+    var weightData = MelodiDB.getList("weightRecords");
+    var latest = weightData.length > 0 ? weightData[0] : null;
+    var settings = MelodiDB.getSettings();
+    var targetWeight = settings.targetWeight || 50;
+
+    // 运动数据联动
+    var exerciseMonthData = MelodiDB.getMonthData("exercise");
+    var exerciseCount = 0;
+    var exerciseMinutes = 0;
+    Object.keys(exerciseMonthData).forEach(function (k) {
+      if (exerciseMonthData[k] && exerciseMonthData[k].checkins && exerciseMonthData[k].checkins.exercise) {
+        exerciseCount++;
+        exerciseMinutes += exerciseMonthData[k].exerciseMinutes || 0;
+      }
+    });
+
+    var html = '<div class="stat-grid">';
+    html += statCard(latest ? latest.weight + "kg" : "--", "最新体重");
+    html += statCard(targetWeight + "kg", "目标体重");
+    html += statCard(latest && latest.weight ? (latest.weight - targetWeight).toFixed(1) + "kg" : "--", "距目标");
+    html += statCard(exerciseCount + "次/" + exerciseMinutes + "min", "本月运动");
+    html += "</div>";
+
+    html += '<div class="card"><div class="card-header"><div class="card-title">记录体重</div></div>';
+    html += '<div class="form-row" style="align-items:flex-end;">';
+    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">体重 (kg)</label><input type="number" class="form-input" id="weightInput" placeholder="如 52.5" step="0.1" style="width:120px;"></div>';
+    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">设置目标</label><input type="number" class="form-input" id="targetWeightInput" value="' + targetWeight + '" step="0.5" style="width:100px;"></div>';
+    html += '<button class="btn btn-primary" id="saveWeightBtn">记录</button>';
+    html += "</div></div>";
+
+    html += '<div class="card"><div class="card-header"><div class="card-title">体重变化曲线</div></div>';
+    html += '<div class="chart-canvas-wrap"><canvas id="weightChart"></canvas></div></div>';
+
+    // 身材线条变化曲线（体重+运动时长双轴）
+    html += '<div class="card"><div class="card-header"><div class="card-title">身材变化趋势 (体重 + 运动时长)</div></div>';
+    html += '<div class="chart-canvas-wrap"><canvas id="bodyTrendChart"></canvas></div></div>';
+
+    return html;
+  }
+
   function setupEvents() {
     // 标签切换
     document.querySelectorAll("#bodyTabs .tab").forEach(function (tab) {
@@ -456,7 +504,7 @@ const BodyModule = (function () {
         data.exercisePart = part;
         MelodiDB.setDayData("exercise", data);
         App.showReminder("运动打卡成功！加油！", "success");
-        App.renderPage("exercise");
+        App.renderPage("fitness");
       });
     }
 
@@ -472,11 +520,38 @@ const BodyModule = (function () {
       });
     }
 
-    // 跳转体重
+    // 跳转体重（切到体重 tab）
     var gotoWeightBtn = document.getElementById("gotoWeightBtn");
     if (gotoWeightBtn) {
       gotoWeightBtn.addEventListener("click", function () {
-        window.location.hash = "#weight";
+        document.querySelectorAll("#bodyTabs .tab").forEach(function (t) { t.classList.remove("active"); });
+        var wt = document.querySelector("#bodyTabs .tab[data-tab='weight']");
+        if (wt) wt.classList.add("active");
+        document.querySelectorAll("#bodyTabs ~ .tab-panel").forEach(function (p) {
+          p.classList.toggle("active", p.dataset.panel === "weight");
+        });
+        renderActiveChart("weight");
+      });
+    }
+
+    // 记录体重
+    var saveWeightBtn = document.getElementById("saveWeightBtn");
+    if (saveWeightBtn) {
+      saveWeightBtn.addEventListener("click", function () {
+        var input = document.getElementById("weightInput");
+        var targetInput = document.getElementById("targetWeightInput");
+        var w = parseFloat(input.value);
+        var tw = parseFloat(targetInput.value);
+        if (tw && tw > 20 && tw < 200) {
+          MelodiDB.setSettings({ targetWeight: tw });
+        }
+        if (!w || w < 20 || w > 200) {
+          App.showReminder("请输入合理的体重", "warning");
+          return;
+        }
+        MelodiDB.addToList("weightRecords", { weight: w, date: MelodiDB.todayKey() });
+        App.showReminder("体重已记录", "success");
+        App.renderPage("fitness");
       });
     }
 
@@ -502,6 +577,7 @@ const BodyModule = (function () {
     else if (tab === "skincare") renderSkincareChart();
     else if (tab === "wellness") renderWellnessChart();
     else if (tab === "leisure") renderLeisureChart();
+    else if (tab === "weight") renderWeightCharts();
   }
 
   function renderMovieList() {
@@ -634,6 +710,41 @@ const BodyModule = (function () {
       { label: "观影", data: movieData, color: MelodiCharts.colors.blue },
       { label: "香水", data: perfumeData, color: MelodiCharts.colors.purple },
       { label: "整理收纳", data: organizeData, color: MelodiCharts.colors.teal },
+    ]);
+  }
+
+  function renderWeightCharts() {
+    var settings = MelodiDB.getSettings();
+    var targetWeight = settings.targetWeight || 50;
+    var exerciseMonthData = MelodiDB.getMonthData("exercise");
+    var weightData = MelodiDB.getList("weightRecords");
+    var records = weightData.slice().reverse();
+
+    // 体重曲线
+    var wLabels = records.map(function (r) { return r.date ? r.date.substring(5) : ""; });
+    var wData = records.map(function (r) { return r.weight; });
+    MelodiCharts.lineChart("weightChart", wLabels, [
+      { label: "体重", data: wData, color: MelodiCharts.colors.primary, fillColor: MelodiCharts.colors.primaryBg },
+      { label: "目标", data: wLabels.map(function () { return targetWeight; }), color: MelodiCharts.colors.green, fill: false, borderWidth: 1, borderDash: [5, 5] },
+    ]);
+
+    // 身材变化趋势（本月每日体重 vs 运动时长）
+    var now = new Date();
+    var currentDay = now.getDate();
+    var trendLabels = [];
+    var trendWeight = [];
+    var trendExercise = [];
+    for (var i = 1; i <= currentDay; i++) {
+      trendLabels.push((now.getMonth() + 1) + "/" + i);
+      var dateKey = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(i).padStart(2, "0");
+      var wRec = records.find(function (r) { return r.date === dateKey; });
+      trendWeight.push(wRec ? wRec.weight : null);
+      var ex = exerciseMonthData[dateKey];
+      trendExercise.push(ex && ex.checkins && ex.checkins.exercise ? (ex.exerciseMinutes || 0) : 0);
+    }
+    MelodiCharts.barChart("bodyTrendChart", trendLabels, [
+      { label: "体重 (kg)", data: trendWeight, color: MelodiCharts.colors.primary },
+      { label: "运动时长 (min)", data: trendExercise, color: MelodiCharts.colors.green },
     ]);
   }
 
