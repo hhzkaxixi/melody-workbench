@@ -917,17 +917,22 @@ const App = (function () {
     setTimeout(function () {
       // Supabase 连接
       var connectBtn = document.getElementById("connectSupabaseBtn");
-      if (connectBtn) connectBtn.addEventListener("click", function () {
+      if (connectBtn) connectBtn.addEventListener("click", async function () {
         var url = document.getElementById("supabaseUrlInput").value.trim();
         var key = document.getElementById("supabaseKeyInput").value.trim();
         if (!url || !key) { App.showReminder("请填写 URL 和 Key", "warning"); return; }
         App.showReminder("正在连接...", "");
         var ok = MelodiDB.initSupabase(url, key);
-        if (ok) {
+        if (!ok) {
+          App.showReminder("连接失败：SDK 未加载或配置无效", "warning");
+          return;
+        }
+        var res = await MelodiDB.testConnection();
+        if (res.ok) {
           App.showReminder("云端连接成功", "success");
           setTimeout(function () { App.renderPage("settings"); }, 1000);
         } else {
-          App.showReminder("连接失败，请检查配置", "warning");
+          App.showReminder("连接失败：" + res.reason, "warning");
         }
       });
 

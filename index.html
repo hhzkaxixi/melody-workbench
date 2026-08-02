@@ -94,8 +94,8 @@
 
   <!-- Chart.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-  <!-- Supabase JS SDK -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/umd/supabase.min.js"></script>
+  <!-- Supabase JS SDK（本地化，避免 CDN 在大陆被墙） -->
+  <script src="js/vendor/supabase.min.js"></script>
   <!-- 应用脚本（加载顺序：基础库 → 支撑模块 → 页面模块 → 路由） -->
   <script src="js/db.js"></script>
   <script src="js/charts.js"></script>

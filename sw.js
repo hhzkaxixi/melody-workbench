@@ -1,5 +1,5 @@
 /* 美乐蒂工作台 Service Worker - 离线缓存 */
-const CACHE_NAME = "melodi-workbench-v13";
+const CACHE_NAME = "melodi-workbench-v14";
 const ASSETS = [
   "./",
   "./index.html",
@@ -25,7 +25,7 @@ const ASSETS = [
   "./assets/icons/icon.svg",
   "./assets/icons/apple-touch-icon.png",
   "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/umd/supabase.min.js"
+  "./js/vendor/supabase.min.js"
 ];
 
 self.addEventListener("install", (event) => {

@@ -283,6 +283,33 @@ const MelodiDB = (function () {
     return false;
   }
 
+  /* 真实连通性探测：真正向 Supabase 发一次请求，区分 配置/表/网络 三种失败 */
+  async function testConnection() {
+    if (!supabaseClient) return { ok: false, reason: "客户端未初始化（SDK 未加载）" };
+    try {
+      const { error } = await supabaseClient
+        .from(TABLE_DAILY)
+        .select("count", { count: "exact", head: true });
+      if (error) {
+        const msg = (error.message || "") + " " + (error.details || "");
+        if (/relation .* does not exist|42P01|does not exist/i.test(msg)) {
+          return { ok: false, reason: "表不存在：请先在 Supabase 的 SQL Editor 执行建表 SQL（melodi_daily / melodi_lists）" };
+        }
+        if (/Failed to fetch|network|timeout|load|fetch/i.test(msg)) {
+          return { ok: false, reason: "网络无法连接 Supabase 服务器（大陆通常无法直连 supabase.co，需境外网络）" };
+        }
+        return { ok: false, reason: "数据库错误：" + msg.trim() };
+      }
+      return { ok: true };
+    } catch (e) {
+      const em = (e && e.message) || String(e);
+      if (/Failed to fetch|network|timeout|load/i.test(em)) {
+        return { ok: false, reason: "网络无法连接 Supabase 服务器（大陆通常无法直连 supabase.co，需境外网络）" };
+      }
+      return { ok: false, reason: "连接异常：" + em };
+    }
+  }
+
   /* 从设置中自动初始化 Supabase */
   function autoInitSupabase() {
     const settings = getSettings();
@@ -757,6 +784,7 @@ const MelodiDB = (function () {
     getCheckins,
     // 云端
     initSupabase,
+    testConnection,
     autoInitSupabase,
     disconnectSupabase,
     fullSync,
