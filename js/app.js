@@ -1261,13 +1261,45 @@ const App = (function () {
     });
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       var __swRefreshing = false;
+      // 首次安装 SW 时还没有旧 controller，不要误触发刷新
+      var __hadController = !!navigator.serviceWorker.controller;
+
+      // 弹出「发现新版本」提示条，点按立即激活最新版（iOS 友好）
+      function showUpdateBanner(worker) {
+        if (document.getElementById("swUpdateBanner") || !worker) return;
+        var banner = document.createElement("div");
+        banner.id = "swUpdateBanner";
+        banner.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:var(--melodi-pink-600,#ff6b95);color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;font-size:14px;";
+        banner.innerHTML = '<span style="flex:1;">✨ 发现新版本，点此立即更新</span><button id="swUpdateBtn" style="background:#fff;color:#ff6b95;border:none;padding:6px 12px;border-radius:8px;font-weight:600;">更新</button>';
+        document.body.appendChild(banner);
+        document.getElementById("swUpdateBtn").addEventListener("click", function () {
+          worker.postMessage({ type: "SKIP_WAITING" });
+        });
+      }
+
       navigator.serviceWorker.register("sw.js").then(function (reg) {
-        // 检测到新版本 Service Worker 接管页面时，自动刷新一次，解决 iOS「刷新没变化」的问题
+        // 已有等待中的新版，直接提示
+        if (reg.waiting) showUpdateBanner(reg.waiting);
+
+        // 安装过程中发现新版
+        reg.addEventListener("updatefound", function () {
+          var newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener("statechange", function () {
+            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              showUpdateBanner(newWorker);
+            }
+          });
+        });
+
+        // 新版接管页面时自动刷新一次（解决 iOS「刷新没变化」）
         navigator.serviceWorker.addEventListener("controllerchange", function () {
           if (__swRefreshing) return;
+          if (!__hadController) { __hadController = true; return; } // 首次激活不刷新
           __swRefreshing = true;
           location.reload();
         });
+
         // 后台主动检查更新（iOS 不会频繁自动查），发现新版本立即激活
         if (reg && reg.update) {
           setTimeout(function () {
