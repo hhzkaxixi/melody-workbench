@@ -149,6 +149,14 @@ const FortuneModule = (function () {
     return Math.abs(h);
   }
   function pick(arr, seed) { return arr[seed % arr.length]; }
+  /* 以「今日日期」为前缀派生独立种子：日期放在最前，才能产生充分雪崩，
+     保证每一项的每一天都被彻底重新洗牌（不会连续多日不变）。salt 让各分项互独立。 */
+  function daySeed(salt) {
+    var t = MelodiDB.todayKey();
+    var s = MelodiDB.getSettings();
+    var birthday = s.birthday || "2000-10-22";
+    return hashStr(t + "|" + salt + "|" + birthday);
+  }
   function escapeHtml(s) {
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -170,8 +178,7 @@ const FortuneModule = (function () {
     var rel = relationToMaster(dm, todayGZ.gan);
     var zodiac = sunSign(birthday);
 
-    var seed = hashStr(birthday + today);
-    var score = 60 + (seed % 40);
+    var score = 60 + (daySeed("score") % 40);
     if (rel.key === "印" || rel.key === "比劫") score = Math.min(98, score + 6);
     if (rel.key === "官杀") score = Math.max(55, score - 6);
 
@@ -182,15 +189,15 @@ const FortuneModule = (function () {
     html += '<div style="text-align:center;padding:8px 0;">';
     html += '<div style="font-size:var(--font-size-xl);font-weight:600;color:var(--melodi-pink-700);">今日运势 · 玄学显化</div>';
     html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);margin-top:4px;">生日 ' + escapeHtml(birthday) +
-      " · 八字 " + escapeHtml(bazi) + " · 今日干支 " + todayGZ.gan + todayGZ.zhi + "（" + today + "）</div>";
+      " · 八字 " + escapeHtml(bazi) + " · 今日干支 " + todayGZ.gan + todayGZ.zhi + "（" + today + "）· 每日更新</div>";
     html += "</div></div>";
 
     /* 综合数据 */
     html += '<div class="stat-grid">';
     html += statCard(score + "/100", "综合运势");
-    html += statCard(pick(LUCKY_COLORS, seed), "幸运颜色");
-    html += statCard(((seed >> 2) % 9 + 1), "幸运数字");
-    html += statCard(pick(LUCKY_DIRS, (seed >> 3)), "幸运方位");
+    html += statCard(pick(LUCKY_COLORS, daySeed("color")), "幸运颜色");
+    html += statCard((1 + (daySeed("num") % 9)), "幸运数字");
+    html += statCard(pick(LUCKY_DIRS, daySeed("dir")), "幸运方位");
     html += "</div>";
 
     /* 八字 · 命盘 */
@@ -214,8 +221,8 @@ const FortuneModule = (function () {
     html += "<br>今日天干 <b>" + todayGZ.gan + "</b> 与日主成 <b style=\"color:var(--melodi-pink-600);\">" + rel.label + "</b> 之象——" + rel.desc;
     html += "</div>";
     html += '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
-    html += '<div style="flex:1;min-width:140px;padding:10px;background:rgba(124,196,127,.12);border-radius:var(--radius-md);"><div style="font-size:var(--font-size-xs);color:var(--text-tertiary);">今日宜</div><div style="font-size:var(--font-size-sm);color:var(--text-primary);font-weight:500;margin-top:4px;">' + pick(YI_POOL, (seed >> 4)) + " · " + pick(YI_POOL, (seed >> 5) + 3) + "</div></div>";
-    html += '<div style="flex:1;min-width:140px;padding:10px;background:rgba(255,138,138,.12);border-radius:var(--radius-md);"><div style="font-size:var(--font-size-xs);color:var(--text-tertiary);">今日忌</div><div style="font-size:var(--font-size-sm);color:var(--text-primary);font-weight:500;margin-top:4px;">' + pick(JI_POOL, (seed >> 4) + 1) + " · " + pick(JI_POOL, (seed >> 6) + 4) + "</div></div>";
+    html += '<div style="flex:1;min-width:140px;padding:10px;background:rgba(124,196,127,.12);border-radius:var(--radius-md);"><div style="font-size:var(--font-size-xs);color:var(--text-tertiary);">今日宜</div><div style="font-size:var(--font-size-sm);color:var(--text-primary);font-weight:500;margin-top:4px;">' + pick(YI_POOL, daySeed("yi1")) + " · " + pick(YI_POOL, daySeed("yi2")) + "</div></div>";
+    html += '<div style="flex:1;min-width:140px;padding:10px;background:rgba(255,138,138,.12);border-radius:var(--radius-md);"><div style="font-size:var(--font-size-xs);color:var(--text-tertiary);">今日忌</div><div style="font-size:var(--font-size-sm);color:var(--text-primary);font-weight:500;margin-top:4px;">' + pick(JI_POOL, daySeed("ji1")) + " · " + pick(JI_POOL, daySeed("ji2")) + "</div></div>";
     html += "</div></div>";
 
     /* 占星 */
@@ -225,8 +232,8 @@ const FortuneModule = (function () {
     html += '<div style="font-size:var(--font-size-xs);color:var(--text-secondary);">元素 ' + zodiac.el + " · 守护星 " + zodiac.ruler + " · 主题 「" + zodiac.key + "」</div>";
     html += "</div>";
     html += '<div style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.8;">';
-    html += "今日 " + zodiac.name + " 的能量提示：" + pick(ZODIAC_ADVICE[zodiac.el], seed >> 3);
-    html += "<br>幸运星：<b>" + zodiac.ruler + "</b>，可朝向 <b>" + pick(LUCKY_DIRS, (seed >> 3)) + "</b> 给自己一点小仪式感。";
+    html += "今日 " + zodiac.name + " 的能量提示：" + pick(ZODIAC_ADVICE[zodiac.el], daySeed("astro"));
+    html += "<br>幸运星：<b>" + zodiac.ruler + "</b>，可朝向 <b>" + pick(LUCKY_DIRS, daySeed("dir-astro")) + "</b> 给自己一点小仪式感。";
     html += "</div></div>";
 
     /* 塔罗 · 显化阵 */
@@ -239,7 +246,7 @@ const FortuneModule = (function () {
     ];
     html += '<div style="display:flex;gap:8px;">';
     for (var s = 0; s < spread.length; s++) {
-      var card = TAROT[hashStr(today + spread[s].k) % TAROT.length];
+      var card = TAROT[daySeed("tarot-" + spread[s].k) % TAROT.length];
       html += '<div style="flex:1;padding:10px;background:linear-gradient(160deg,var(--melodi-pink-50),#fff);border:1px solid var(--melodi-pink-100);border-radius:var(--radius-md);">';
       html += '<div style="font-size:var(--font-size-xs);color:var(--melodi-pink-500);">' + spread[s].tag + "</div>";
       html += '<div style="font-size:var(--font-size-md);font-weight:600;color:var(--text-primary);margin:4px 0;">' + card.name + "</div>";
@@ -252,10 +259,10 @@ const FortuneModule = (function () {
 
     /* 今日提示 */
     html += '<div class="card"><div class="card-header"><div class="card-title">今日提示</div></div>';
-    html += '<div style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.8;">' + pick(TIPS, seed >> 2) + "</div></div>";
+    html += '<div style="font-size:var(--font-size-sm);color:var(--text-secondary);line-height:1.8;">' + pick(TIPS, daySeed("tip")) + "</div></div>";
 
     /* 每日励志 */
-    var q = pick(QUOTES, seed >> 4);
+    var q = pick(QUOTES, daySeed("quote"));
     html += '<div class="card"><div class="card-header"><div class="card-title">每日励志</div></div>';
     html += '<div style="font-size:var(--font-size-md);color:var(--melodi-pink-600);font-weight:500;">' + escapeHtml(q.cn) + "</div>";
     html += '<div style="font-size:var(--font-size-sm);color:var(--text-tertiary);margin-top:8px;font-style:italic;">' + escapeHtml(q.en) + "</div></div>";
@@ -263,7 +270,7 @@ const FortuneModule = (function () {
     /* 今日显化誓约 */
     html += '<div class="card" style="background:linear-gradient(135deg,#fff,var(--melodi-pink-50));border:1px solid var(--melodi-pink-100);">';
     html += '<div class="card-header"><div class="card-title">今日显化誓约</div></div>';
-    html += '<div style="font-size:var(--font-size-md);color:var(--melodi-pink-700);font-weight:500;text-align:center;line-height:1.8;">「 ' + pick(MANIFEST, seed >> 5) + " 」</div>";
+    html += '<div style="font-size:var(--font-size-md);color:var(--melodi-pink-700);font-weight:500;text-align:center;line-height:1.8;">「 ' + pick(MANIFEST, daySeed("manifest")) + " 」</div>";
     html += '<div style="font-size:var(--font-size-xs);color:var(--text-tertiary);text-align:center;margin-top:8px;">每天默念一遍，让信念成为现实的形状。</div>';
     html += "</div>";
 
