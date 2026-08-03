@@ -616,6 +616,17 @@
   flex-shrink: 0;
 }
 
+/* 灵感收纳（休闲习惯页内嵌卡片） */
+.insp-capture-card .form-textarea {
+  margin-top: var(--space-sm);
+}
+
+.insp-capture-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: var(--space-sm);
+}
+
 /* ========== 页面标题区 ========== */
 .page-section {
   margin-bottom: var(--space-lg);

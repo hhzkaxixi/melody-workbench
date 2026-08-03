@@ -59,37 +59,6 @@
         <!-- 页面由 JS 动态渲染 -->
       </main>
     </div>
-
-    <!-- 灵感收纳框 -->
-    <div class="inspiration-fab" id="inspirationFab" title="灵感收纳">
-      <svg viewBox="0 0 24 24"><path d="M9 21c0 .5.4 1 1 1h4c.6 0 1-.5 1-1v-1H9v1zm3-19c-4 0-7 3-7 7 0 2.4 1.2 4.5 3 5.7V17c0 .5.5 1 1 1h6c.5 0 1-.5 1-1v-3.3c1.8-1.2 3-3.3 3-5.7 0-4-3-7-7-7z"/></svg>
-    </div>
-    <div class="inspiration-panel" id="inspirationPanel">
-      <div style="font-weight:600;color:var(--melodi-pink-700);font-size:var(--font-size-sm);">灵感收纳</div>
-      <textarea class="form-textarea" id="inspirationInput" placeholder="随手记下闪过的想法..." rows="3"></textarea>
-      <button class="btn btn-primary btn-sm" id="saveInspirationBtn">保存灵感</button>
-      <div class="inspiration-list" id="inspirationList"></div>
-    </div>
-
-    <!-- 番茄钟 -->
-    <div class="pomodoro-fab" id="pomodoroFab" title="番茄钟">
-      <svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 3 2 5.5 4.5 6.5V18c0 .5.5 1 1 1h3c.5 0 1-.5 1-1v-2.5C17 14.5 19 12 19 9c0-4-3-7-7-7zm-1 14v-2h2v2h-2zm3.5-3.5l-1 1L12 11l-2.5 2.5-1-1L10 11H7.5l1-1H10l-1-2 2 1.5 2-1.5-1 2h2.5l-1 1H14l.5 1.5z"/></svg>
-    </div>
-    <div class="pomodoro-panel" id="pomodoroPanel">
-      <div style="font-weight:600;color:var(--melodi-pink-700);font-size:var(--font-size-sm);">自定义番茄钟</div>
-      <div class="pomodoro-display">
-        <div class="pomodoro-time" id="pomodoroTime">25:00</div>
-        <div class="pomodoro-status" id="pomodoroStatus">设置时长开始专注</div>
-      </div>
-      <div class="pomodoro-duration">
-        <span>时长</span>
-        <input type="number" id="pomodoroDuration" value="25" min="5" max="120">分钟
-      </div>
-      <div class="pomodoro-controls">
-        <button class="btn btn-primary btn-sm" id="pomodoroStartBtn">开始</button>
-        <button class="btn btn-secondary btn-sm" id="pomodoroResetBtn">重置</button>
-      </div>
-    </div>
   </div>
 
   <!-- Chart.js CDN -->

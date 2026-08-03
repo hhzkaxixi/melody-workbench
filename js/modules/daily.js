@@ -1076,8 +1076,6 @@ const DailyModule = (function () {
     if (doing) h += '<span class="status-badge doing">进行中</span>';
     h += "</div></div>";
     h += '<div class="task-ops">';
-    h += '<button class="btn-quickstart" data-quick="' + t.id + '">先做5分钟</button>';
-    h += '<button class="btn-pomodoro" data-pomodoro="' + t.id + '" title="番茄钟：专注25分钟+休息5分钟">🍅 番茄</button>';
     h += '<button class="task-op" data-toggle="' + t.id + '" title="' + (doing ? "标记为待办" : "标记为进行中") + '">' + (doing ? "⏸" : "▶") + "</button>";
     h += '<button class="task-op task-delete" data-id="' + t.id + '" title="删除">×</button>';
     h += "</div></div>";
@@ -1115,42 +1113,6 @@ const DailyModule = (function () {
         MelodiDB.updateInList("tasks", id, { status: next });
         if (next === "doing" && window.MelodiADHD) MelodiADHD.play("tick");
         renderQuadrants();
-      });
-    });
-
-    // 5分钟启动：直接进专注模式
-    container.querySelectorAll("[data-quick]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var id = this.getAttribute("data-quick");
-        var task = MelodiDB.getList("tasks").filter(function (t) { return t.id === id; })[0];
-        if (!task || !window.MelodiADHD) return;
-        MelodiDB.updateInList("tasks", id, { status: "doing" });
-        MelodiADHD.quickStart(task.text, function (min, completed) {
-          var cur = MelodiDB.getList("tasks").filter(function (t) { return t.id === id; })[0];
-          if (cur) MelodiDB.updateInList("tasks", id, { spentMin: (cur.spentMin || 0) + min });
-          renderQuadrants();
-        });
-      });
-    });
-
-    // 番茄钟：专注 25 分钟 + 自动休息 5 分钟
-    container.querySelectorAll("[data-pomodoro]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var id = this.getAttribute("data-pomodoro");
-        var task = MelodiDB.getList("tasks").filter(function (t) { return t.id === id; })[0];
-        if (!task || !window.MelodiADHD) return;
-        MelodiDB.updateInList("tasks", id, { status: "doing" });
-        MelodiADHD.startFocus({
-          name: task.text,
-          minutes: 25,
-          breakMin: 5,
-          hint: "经典番茄钟：专注 25 分钟，到点自动进入 5 分钟休息",
-          onComplete: function (min, completed) {
-            var cur = MelodiDB.getList("tasks").filter(function (t) { return t.id === id; })[0];
-            if (cur) MelodiDB.updateInList("tasks", id, { spentMin: (cur.spentMin || 0) + min });
-            renderQuadrants();
-          },
-        });
       });
     });
 

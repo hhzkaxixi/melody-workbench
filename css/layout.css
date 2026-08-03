@@ -275,112 +275,6 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ========== 浮动组件 ========== */
-/* 灵感收纳框 */
-.inspiration-fab {
-  position: fixed;
-  right: var(--space-lg);
-  bottom: var(--space-lg);
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-full);
-  background: var(--melodi-pink-400);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-lg);
-  z-index: 200;
-  cursor: pointer;
-  transition: transform var(--transition-fast);
-}
-
-.inspiration-fab:hover {
-  transform: scale(1.1);
-}
-
-.inspiration-fab svg {
-  width: 24px;
-  height: 24px;
-  fill: white;
-}
-
-.inspiration-panel {
-  position: fixed;
-  right: var(--space-lg);
-  bottom: 80px;
-  width: 300px;
-  max-width: calc(100vw - 32px);
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--border-light);
-  padding: var(--space-md);
-  z-index: 200;
-  display: none;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.inspiration-panel.show {
-  display: flex;
-  animation: slideUp var(--transition-normal);
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* 番茄钟 */
-.pomodoro-fab {
-  position: fixed;
-  right: var(--space-lg);
-  bottom: 80px;
-  width: 52px;
-  height: 52px;
-  border-radius: var(--radius-full);
-  background: var(--melodi-pink-300);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-md);
-  z-index: 200;
-  cursor: pointer;
-  transition: transform var(--transition-fast);
-}
-
-.pomodoro-fab:hover {
-  transform: scale(1.1);
-}
-
-.pomodoro-fab svg {
-  width: 22px;
-  height: 22px;
-  fill: white;
-}
-
-.pomodoro-panel {
-  position: fixed;
-  right: var(--space-lg);
-  bottom: 140px;
-  width: 260px;
-  max-width: calc(100vw - 32px);
-  background: var(--bg-surface);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--border-light);
-  padding: var(--space-md);
-  z-index: 200;
-  display: none;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.pomodoro-panel.show {
-  display: flex;
-  animation: slideUp var(--transition-normal);
-}
-
 /* ========== 响应式 ========== */
 @media (max-width: 768px) {
   .sidebar {
@@ -414,20 +308,6 @@
 
   .date-display .time {
     font-size: var(--font-size-sm);
-  }
-
-  .inspiration-fab,
-  .pomodoro-fab {
-    width: 44px;
-    height: 44px;
-  }
-
-  .pomodoro-fab {
-    bottom: 72px;
-  }
-
-  .pomodoro-panel {
-    bottom: 124px;
   }
 }
 

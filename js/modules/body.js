@@ -404,11 +404,53 @@ const BodyModule = (function () {
     html += '<div class="chart-canvas-wrap"><canvas id="leisureChart"></canvas></div>';
     html += "</div>";
 
+    // 灵感收纳（随手记，已并入休闲习惯页，原为右下角悬浮按钮）
+    html += '<div class="section-divider"><span class="section-divider-label">灵感收纳</span></div>';
+    html += '<div class="card insp-capture-card">';
+    html += '<div class="card-header"><div class="card-title">灵感收纳</div>';
+    html += '<span class="muted">随手记下闪过的想法</span></div>';
+    html += '<textarea class="form-textarea" id="inspCaptureInput" placeholder="随手记下闪过的想法..." rows="3"></textarea>';
+    html += '<div class="flex gap-sm" style="margin-top:8px;"><button class="btn btn-primary btn-sm" id="inspCaptureSave">保存灵感</button></div>';
+    html += '<div class="insp-capture-list" id="inspCaptureList"></div>';
+    html += "</div>";
+
     // 灵感清单（作为休闲习惯的一个 part）
     html += '<div class="section-divider"><span class="section-divider-label">灵感清单</span></div>';
     html += '<div id="inspirationPart">' + InspirationModule.renderPart() + "</div>";
 
     return html;
+  }
+
+  /* 灵感收纳：随手记（原右下角悬浮按钮，已并入休闲习惯页） */
+  function bindInspCapture() {
+    var input = document.getElementById("inspCaptureInput");
+    var saveBtn = document.getElementById("inspCaptureSave");
+    if (!input || !saveBtn) return;
+    var save = function () {
+      var text = input.value.trim();
+      if (!text) return;
+      MelodiDB.addToList("inspirations", { text: text, createdAt: new Date().toISOString() });
+      input.value = "";
+      renderInspCaptureList();
+      App.showReminder("灵感已收纳", "success");
+    };
+    saveBtn.addEventListener("click", save);
+    input.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.ctrlKey) save(); });
+    renderInspCaptureList();
+  }
+
+  function renderInspCaptureList() {
+    var container = document.getElementById("inspCaptureList");
+    if (!container) return;
+    var items = MelodiDB.getList("inspirations").slice(0, 10);
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state-text" style="padding:8px;">还没有灵感记录</div>';
+      return;
+    }
+    container.innerHTML = items.map(function (i) {
+      var time = new Date(i.createdAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+      return '<div class="inspiration-entry"><span>' + escapeHtml(i.text) + '</span><span class="inspiration-time">' + time + "</span></div>";
+    }).join("");
   }
 
   /* ===== 事件绑定 ===== */
@@ -550,6 +592,9 @@ const BodyModule = (function () {
 
     // 灵感清单（内嵌在休闲习惯中）事件绑定
     if (window.InspirationModule) InspirationModule.bindPart();
+
+    // 灵感收纳（随手记，已并入休闲习惯页）
+    bindInspCapture();
 
     // 初始化观影列表（显示已有记录）
     renderMovieList();

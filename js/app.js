@@ -4,10 +4,6 @@
    ============================================ */
 
 const App = (function () {
-  var pomodoroTimer = null;
-  var pomodoroRemaining = 0;
-  var pomodoroRunning = false;
-
   /* ===== 页面渲染器 ===== */
   var pageRenderers = {
     dashboard: function () { return DailyModule.render(); },
@@ -116,7 +112,7 @@ const App = (function () {
   }
 
   /* ===== 学习方向（原「学习板块」已取消，方向置顶到人生规划作为提醒）===== */
-  // 这些方向既是提醒，也是一键开始 5 分钟专注的入口；学习时长仍计入 study 日数据。
+  // 这些方向是每日提醒，点一下标记今天学了它（番茄钟/专注功能已取消）。
   var PRESET_DIRS = [
     { key: "exam_civil", label: "考公上岸", icon: "🏛️" },
     { key: "exam_post", label: "考研", icon: "🎓" },
@@ -136,30 +132,29 @@ const App = (function () {
     }));
   }
 
-  function studyAddMinutes(dirKey, min) {
-    if (!min || min <= 0) return;
-    var d = MelodiDB.getDayData("study") || { minutes: 0, rounds: 0, byDirection: {} };
-    d.minutes = Math.round(((d.minutes || 0) + min) * 10) / 10;
-    d.byDirection = d.byDirection || {};
-    if (dirKey) d.byDirection[dirKey] = Math.round(((d.byDirection[dirKey] || 0) + min) * 10) / 10;
+  function toggleStudyDir(dirKey) {
+    if (!dirKey) return;
+    var d = MelodiDB.getDayData("study") || { doneDirs: {} };
+    d.doneDirs = d.doneDirs || {};
+    if (d.doneDirs[dirKey]) delete d.doneDirs[dirKey];
+    else d.doneDirs[dirKey] = true;
     MelodiDB.setDayData("study", d);
   }
 
   function renderStudyReminder() {
     var dirs = getStudyDirections();
     var today = MelodiDB.getDayData("study") || {};
-    var byDir = today.byDirection || {};
+    var doneDirs = today.doneDirs || {};
     var html = '<div class="card study-reminder-card">';
     html += '<div class="card-header"><div class="card-title">🎯 学习方向（置顶提醒）</div>';
-    html += '<span class="muted">点方向即开始 5 分钟专注，今日已学自动记下</span></div>';
+    html += '<span class="muted">点一下标记今天学了它，作为每日提醒</span></div>';
     html += '<div class="dir-reminder-list" id="studyDirReminder">';
     dirs.forEach(function (d) {
-      var min = byDir[d.key] || 0;
-      var done = min > 0;
-      html += '<button class="dir-reminder-chip' + (done ? " done" : "") + '" data-dir="' + d.key + '" data-dir-label="' + escapeHtml(d.label) + '">';
+      var done = !!doneDirs[d.key];
+      html += '<button class="dir-reminder-chip' + (done ? " done" : "") + '" data-dir="' + d.key + '">';
       html += '<span class="dir-ico">' + d.icon + "</span>";
       html += '<span class="dir-name">' + escapeHtml(d.label) + "</span>";
-      html += '<span class="dir-today">' + (done ? "今日 " + Math.round(min) + " 分钟" : "未学") + "</span>";
+      html += '<span class="dir-today">' + (done ? "今日已学 ✓" : "未学") + "</span>";
       html += "</button>";
     });
     html += "</div>";
@@ -175,15 +170,14 @@ const App = (function () {
     if (!box) return;
     var dirs = getStudyDirections();
     var today = MelodiDB.getDayData("study") || {};
-    var byDir = today.byDirection || {};
+    var doneDirs = today.doneDirs || {};
     var h = "";
     dirs.forEach(function (d) {
-      var min = byDir[d.key] || 0;
-      var done = min > 0;
-      h += '<button class="dir-reminder-chip' + (done ? " done" : "") + '" data-dir="' + d.key + '" data-dir-label="' + escapeHtml(d.label) + '">';
+      var done = !!doneDirs[d.key];
+      h += '<button class="dir-reminder-chip' + (done ? " done" : "") + '" data-dir="' + d.key + '">';
       h += '<span class="dir-ico">' + d.icon + "</span>";
       h += '<span class="dir-name">' + escapeHtml(d.label) + "</span>";
-      h += '<span class="dir-today">' + (done ? "今日 " + Math.round(min) + " 分钟" : "未学") + "</span>";
+      h += '<span class="dir-today">' + (done ? "今日已学 ✓" : "未学") + "</span>";
       h += "</button>";
     });
     box.innerHTML = h;
@@ -195,14 +189,8 @@ const App = (function () {
   function bindDirChip(chip) {
     chip.addEventListener("click", function () {
       var key = chip.getAttribute("data-dir");
-      var label = chip.getAttribute("data-dir-label");
-      if (!window.MelodiADHD) return;
-      MelodiADHD.quickStart(label, function (min) {
-        if (min > 0) {
-          studyAddMinutes(key, min);
-          refreshStudyReminder();
-        }
-      });
+      toggleStudyDir(key);
+      refreshStudyReminder();
     });
   }
 
@@ -1189,123 +1177,6 @@ const App = (function () {
     }
   }
 
-  /* ===== 灵感收纳 ===== */
-  function setupInspiration() {
-    var fab = document.getElementById("inspirationFab");
-    var panel = document.getElementById("inspirationPanel");
-    var saveBtn = document.getElementById("saveInspirationBtn");
-    var input = document.getElementById("inspirationInput");
-
-    if (fab) {
-      fab.addEventListener("click", function () {
-        panel.classList.toggle("show");
-        if (panel.classList.contains("show")) {
-          input.focus();
-          renderInspirationList();
-        }
-      });
-    }
-    if (saveBtn && input) {
-      var save = function () {
-        var text = input.value.trim();
-        if (!text) return;
-        MelodiDB.addToList("inspirations", { text: text });
-        input.value = "";
-        renderInspirationList();
-        App.showReminder("灵感已收纳", "success");
-      };
-      saveBtn.addEventListener("click", save);
-      input.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.ctrlKey) save(); });
-    }
-  }
-
-  function renderInspirationList() {
-    var container = document.getElementById("inspirationList");
-    if (!container) return;
-    var items = MelodiDB.getList("inspirations").slice(0, 10);
-    if (items.length === 0) {
-      container.innerHTML = '<div class="empty-state-text" style="padding:8px;">还没有灵感记录</div>';
-      return;
-    }
-    container.innerHTML = items.map(function (i) {
-      var time = new Date(i.createdAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-      return '<div class="inspiration-entry"><span>' + escapeHtml(i.text) + '</span><span class="inspiration-time">' + time + "</span></div>";
-    }).join("");
-  }
-
-  /* ===== 番茄钟 ===== */
-  function setupPomodoro() {
-    var fab = document.getElementById("pomodoroFab");
-    var panel = document.getElementById("pomodoroPanel");
-    var startBtn = document.getElementById("pomodoroStartBtn");
-    var resetBtn = document.getElementById("pomodoroResetBtn");
-    var durationInput = document.getElementById("pomodoroDuration");
-    var settings = MelodiDB.getSettings();
-
-    if (durationInput) durationInput.value = settings.pomodoroDuration || 25;
-    if (fab) fab.addEventListener("click", function () { panel.classList.toggle("show"); });
-    if (durationInput) {
-      durationInput.addEventListener("change", function () {
-        if (!pomodoroRunning) {
-          var min = parseInt(durationInput.value) || 25;
-          pomodoroRemaining = min * 60;
-          updatePomodoroDisplay();
-          MelodiDB.setSettings({ pomodoroDuration: min });
-        }
-      });
-    }
-    if (startBtn) {
-      startBtn.addEventListener("click", function () {
-        if (pomodoroRunning) {
-          clearInterval(pomodoroTimer);
-          pomodoroRunning = false;
-          startBtn.textContent = "继续";
-          document.getElementById("pomodoroStatus").textContent = "已暂停";
-        } else {
-          if (pomodoroRemaining <= 0) {
-            var min = parseInt(durationInput.value) || 25;
-            pomodoroRemaining = min * 60;
-          }
-          pomodoroRunning = true;
-          startBtn.textContent = "暂停";
-          document.getElementById("pomodoroStatus").textContent = "专注中...";
-          pomodoroTimer = setInterval(function () {
-            pomodoroRemaining--;
-            if (pomodoroRemaining <= 0) {
-              clearInterval(pomodoroTimer);
-              pomodoroRunning = false;
-              startBtn.textContent = "开始";
-              document.getElementById("pomodoroStatus").textContent = "专注完成！";
-              App.showReminder("番茄钟完成", "success");
-              pomodoroRemaining = (parseInt(durationInput.value) || 25) * 60;
-            }
-            updatePomodoroDisplay();
-          }, 1000);
-        }
-      });
-    }
-    if (resetBtn) {
-      resetBtn.addEventListener("click", function () {
-        clearInterval(pomodoroTimer);
-        pomodoroRunning = false;
-        var min = parseInt(durationInput.value) || 25;
-        pomodoroRemaining = min * 60;
-        startBtn.textContent = "开始";
-        document.getElementById("pomodoroStatus").textContent = "设置时长开始专注";
-        updatePomodoroDisplay();
-      });
-    }
-    pomodoroRemaining = (settings.pomodoroDuration || 25) * 60;
-    updatePomodoroDisplay();
-  }
-
-  function updatePomodoroDisplay() {
-    var el = document.getElementById("pomodoroTime");
-    if (!el) return;
-    var m = Math.floor(pomodoroRemaining / 60);
-    var s = pomodoroRemaining % 60;
-    el.textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-  }
 
   /* ===== 时钟 ===== */
   function startClock() {
@@ -1398,9 +1269,7 @@ const App = (function () {
   function init() {
     Sidebar.init();
     startClock();
-    setupInspiration();
-    setupPomodoro();
-    // ADHD 专项支持：初始化音效解锁、专注浮层等
+    // ADHD 专项支持：初始化音效解锁等（番茄钟/专注功能已取消）
     if (window.MelodiADHD) MelodiADHD.init();
     // 自动初始化 Supabase（如果已配置）
     MelodiDB.autoInitSupabase();
