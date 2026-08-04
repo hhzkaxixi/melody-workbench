@@ -215,6 +215,108 @@
   fill: white;
 }
 
+/* ===== 快速打卡 - 自定义管理（增删 / 编辑图标） ===== */
+.qc-tools {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 2;
+}
+.qc-edit, .qc-del {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+.qc-del:hover { background: var(--color-danger); color: #fff; }
+.qc-edit:hover { background: var(--melodi-pink-400); color: #fff; }
+.checkin-item.qc-managing .checkin-check { display: none; }
+.checkin-item.qc-managing .checkin-icon { padding-top: 8px; }
+
+.checkin-item.qc-add {
+  border-style: dashed;
+  color: var(--text-tertiary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.checkin-item.qc-add .checkin-icon { color: var(--melodi-pink-400); font-size: 26px; }
+.checkin-item.qc-add:hover { border-color: var(--melodi-pink-400); color: var(--melodi-pink-600); }
+
+.qc-editor {
+  background: var(--melodi-pink-50);
+  border: 1px solid var(--melodi-pink-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.qc-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.qc-editor-row > label {
+  width: 42px;
+  flex: 0 0 42px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.qc-editor-row .input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.qc-editor-row .input:focus { border-color: var(--melodi-pink-500); }
+.qc-emojis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 52px;
+}
+.qc-emoji {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all var(--transition-fast);
+}
+.qc-emoji:hover { border-color: var(--melodi-pink-400); background: var(--melodi-pink-100); }
+.qc-editor-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: 52px;
+}
+
 /* ========== 精力标签 ========== */
 .energy-tags {
   display: flex;

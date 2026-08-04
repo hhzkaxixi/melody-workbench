@@ -1,5 +1,5 @@
 /* 美乐蒂工作台 Service Worker - 离线缓存 */
-const CACHE_NAME = "melodi-workbench-v35";
+const CACHE_NAME = "melodi-workbench-v36";
 const ASSETS = [
   "./",
   "./index.html",

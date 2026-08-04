@@ -161,20 +161,45 @@ const DailyModule = (function () {
     return html;
   }
 
-  /* ===== 快速打卡 ===== */
+  /* ===== 快速打卡（支持自定义增删 / 编辑图标） ===== */
+  var DEFAULT_QUICK_CHECKINS = [
+    { key: "supplement", label: "保健品", icon: "\uD83D\uDC8A", module: "wellness", custom: false },
+    { key: "ginseng", label: "红参元", icon: "\uD83E\uDED6", module: "wellness", custom: false },
+    { key: "footbath", label: "泡脚", icon: "\uD83E\uDDB6", module: "wellness", custom: false },
+    { key: "mask", label: "面膜", icon: "\uD83C\uDFAD", module: "skincare", custom: false },
+    { key: "reading", label: "阅读", icon: "\uD83D\uDCD6", module: "growth", custom: false },
+    { key: "calligraphy", label: "练字", icon: "\u270F\uFE0F", module: "growth", custom: false },
+    { key: "words", label: "背词", icon: "\uD83D\uDD24", module: "growth", custom: false },
+    { key: "exercise", label: "运动", icon: "\uD83D\uDCAA", module: "exercise", custom: false },
+    { key: "sub_podcast", label: "sub/播客", icon: "\uD83C\uDFA7", module: "leisure", custom: false },
+    { key: "perfume", label: "香水", icon: "\uD83D\uDC85", module: "leisure", custom: false },
+  ];
+  var QC_MODULES = [
+    { key: "wellness", label: "养生习惯" },
+    { key: "skincare", label: "护肤" },
+    { key: "growth", label: "成长学习" },
+    { key: "leisure", label: "休闲" },
+    { key: "exercise", label: "运动" },
+  ];
+  var qcManage = false;   // 是否处于「管理（自定义增删/编辑）」模式
+  var qcEditing = null;   // null | "__new__" | 编辑中的条目 id
+
+  // 读取快速打卡列表；首次运行写入默认项（仅一次，清空后不会复活）
+  function getQuickCheckins() {
+    if (!MelodiDB.get("quickCheckins_init")) {
+      var seeded = DEFAULT_QUICK_CHECKINS.map(function (c) {
+        var it = Object.assign({}, c);
+        it.id = "def_" + c.key;
+        return it;
+      });
+      MelodiDB.set("list:quickCheckins", seeded);
+      MelodiDB.set("quickCheckins_init", true);
+    }
+    return MelodiDB.getList("quickCheckins");
+  }
+
   function renderQuickCheckin() {
-    var quickCheckins = [
-      { key: "supplement", label: "保健品", icon: "\uD83D\uDC8A", module: "wellness" },
-      { key: "ginseng", label: "红参元", icon: "\uD83E\uDED6", module: "wellness" },
-      { key: "footbath", label: "泡脚", icon: "\uD83E\uDDB6", module: "wellness" },
-      { key: "mask", label: "面膜", icon: "\uD83C\uDFAD", module: "skincare" },
-      { key: "reading", label: "阅读", icon: "\uD83D\uDCD6", module: "growth" },
-      { key: "calligraphy", label: "练字", icon: "\u270F\uFE0F", module: "growth" },
-      { key: "words", label: "背词", icon: "\uD83D\uDD24", module: "growth" },
-      { key: "exercise", label: "运动", icon: "\uD83D\uDCAA", module: "exercise" },
-      { key: "sub_podcast", label: "sub/播客", icon: "\uD83C\uDFA7", module: "leisure" },
-      { key: "perfume", label: "香水", icon: "\uD83D\uDC85", module: "leisure" },
-    ];
+    var items = getQuickCheckins();
     var todayCheckins = {};
     ["wellness", "skincare", "growth", "leisure"].forEach(function (m) {
       var data = MelodiDB.getDayData(m) || {};
@@ -184,18 +209,99 @@ const DailyModule = (function () {
     if (exerciseCheckins.exercise) todayCheckins.exercise = true;
 
     var html = '<div class="card">';
-    html += '<div class="card-header"><div class="card-title">快速打卡</div></div>';
+    html += '<div class="card-header"><div class="card-title">快速打卡</div>';
+    html += '<button class="btn btn-ghost btn-sm" id="qcManageBtn">' + (qcManage ? "完成" : "管理") + "</button></div>";
+
+    if (qcEditing) html += renderQcEditor(qcEditing);
+
     html += '<div class="checkin-grid">';
-    quickCheckins.forEach(function (c) {
+    items.forEach(function (c) {
       var checked = todayCheckins[c.key];
-      html += '<div class="checkin-item' + (checked ? " checked" : "") + '" data-module="' + c.module + '" data-key="' + c.key + '">';
-      html += '<div class="checkin-icon">' + c.icon + "</div>";
-      html += '<div class="checkin-label">' + c.label + "</div>";
+      var cls = "checkin-item" + (checked ? " checked" : "") + (qcManage ? " qc-managing" : "");
+      html += '<div class="' + cls + '" data-module="' + c.module + '" data-key="' + c.key + '">';
+      if (qcManage) {
+        html += '<div class="qc-tools">';
+        html += '<button class="qc-edit" data-qc-edit="' + c.id + '" type="button" title="编辑">✎</button>';
+        html += '<button class="qc-del" data-qc-del="' + c.id + '" type="button" title="删除">×</button>';
+        html += "</div>";
+      }
+      html += '<div class="checkin-icon">' + (c.icon || "⭐") + "</div>";
+      html += '<div class="checkin-label">' + escapeHtml(c.label || "") + "</div>";
       html += '<div class="checkin-check"><svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5l-1.4 1.4l4.9 4.9l11-11l-1.4-1.4z"/></svg></div>';
       html += "</div>";
     });
+
+    if (qcManage && qcEditing !== "__new__") {
+      html += '<div class="checkin-item qc-add" data-qc-add="1"><div class="checkin-icon">＋</div><div class="checkin-label">添加打卡项</div></div>';
+    }
+
     html += "</div></div>";
     return html;
+  }
+
+  // 添加 / 编辑 表单
+  function renderQcEditor(editingId) {
+    var item = null;
+    var isNew = editingId === "__new__";
+    if (!isNew && editingId) {
+      item = getQuickCheckins().filter(function (x) { return x.id === editingId; })[0];
+    }
+    var label = item ? (item.label || "") : "";
+    var icon = item ? (item.icon || "⭐") : "⭐";
+    var module = item ? item.module : "leisure";
+    var isCustom = item ? !!item.custom : true;
+
+    var emojiChoices = ["⭐", "💊", "🧖", "🛁", "💄", "📖", "✏️", "📝", "💪", "🎧", "💐", "🍵", "🥗", "🍎", "🌿", "💧", "🔥", "🌞", "🌙", "🧘", "🚶", "🏃", "🍲", "☕", "🎯", "💡", "📱", "🛌", "🪥", "🧴"];
+
+    var html = '<div class="qc-editor">';
+    html += '<div class="qc-editor-row"><label>名称</label><input type="text" id="qcLabel" class="input" maxlength="12" placeholder="例如：泡脚 / 喝豆浆" value="' + escapeHtml(label) + '"></div>';
+    html += '<div class="qc-editor-row"><label>图标</label><input type="text" id="qcIcon" class="input" maxlength="4" placeholder="⭐" value="' + escapeHtml(icon) + '"></div>';
+    html += '<div class="qc-emojis" id="qcEmojis">';
+    emojiChoices.forEach(function (e) { html += '<span class="qc-emoji" data-emoji="' + e + '">' + e + "</span>"; });
+    html += "</div>";
+    html += '<div class="qc-editor-row"><label>归属</label><select id="qcModule" class="input"' + (isCustom ? "" : " disabled title=\"系统项不可改归属\"") + ">";
+    QC_MODULES.forEach(function (m) {
+      html += '<option value="' + m.key + '"' + (m.key === module ? " selected" : "") + ">" + m.label + "</option>";
+    });
+    html += "</select></div>";
+    html += '<div class="qc-editor-actions"><button class="btn btn-primary btn-sm" id="qcSaveBtn" type="button">' + (isNew ? "添加" : "保存") + '</button>';
+    html += '<button class="btn btn-ghost btn-sm" id="qcCancelBtn" type="button">取消</button></div>';
+    html += "</div>";
+    return html;
+  }
+
+  // 仅重绘「快速打卡」面板（保证原地刷新、不跳顶）
+  function refreshQuickCheckinPanel() {
+    var panel = document.getElementById("panel-checkin");
+    if (!panel) { App.renderPage("dashboard"); return; }
+    panel.innerHTML = renderQuickCheckin();
+  }
+
+  function saveQuickCheckin() {
+    var labelEl = document.getElementById("qcLabel");
+    var iconEl = document.getElementById("qcIcon");
+    var moduleEl = document.getElementById("qcModule");
+    var label = (labelEl && labelEl.value || "").trim();
+    var icon = (iconEl && iconEl.value || "").trim() || "⭐";
+    if (!label) { App.showReminder("请填写名称", "warning"); if (labelEl) labelEl.focus(); return; }
+    var module = moduleEl ? moduleEl.value : "leisure";
+    if (qcEditing === "__new__") {
+      var id = "qc_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      MelodiDB.addToList("quickCheckins", { id: id, label: label, icon: icon, module: module, key: id, custom: true });
+      App.showReminder("已添加「" + label + "」", "success");
+    } else {
+      MelodiDB.updateInList("quickCheckins", qcEditing, { label: label, icon: icon, module: module });
+      App.showReminder("已保存", "success");
+    }
+    qcEditing = null;
+    refreshQuickCheckinPanel();
+  }
+
+  function deleteQuickCheckin(id) {
+    MelodiDB.removeFromList("quickCheckins", id);
+    if (qcEditing === id) qcEditing = null;
+    refreshQuickCheckinPanel();
+    App.showReminder("已删除该打卡项", "warning");
   }
 
   /* ===== 饮食记录 ===== */
@@ -470,16 +576,39 @@ const DailyModule = (function () {
     if (stat) stat.textContent = sleepData.duration ? sleepData.duration.toFixed(1) + "h" : "--";
   }
 
-  /* === 打卡事件 === */
+  /* === 打卡事件（事件委托，支持自定义增删后动态生效） === */
   function setupCheckinEvents() {
-    document.querySelectorAll(".checkin-item").forEach(function (item) {
-      item.addEventListener("click", function () {
-        var module = this.dataset.module;
-        var key = this.dataset.key;
+    var panel = document.getElementById("panel-checkin");
+    if (!panel) return;
+    panel.addEventListener("click", function (e) {
+      var t = e.target;
+
+      // 删除
+      var del = t.closest("[data-qc-del]");
+      if (del) { e.stopPropagation(); deleteQuickCheckin(del.dataset.qcDel); return; }
+      // 编辑
+      var edit = t.closest("[data-qc-edit]");
+      if (edit) { e.stopPropagation(); qcEditing = edit.dataset.qcEdit; refreshQuickCheckinPanel(); return; }
+      // 添加
+      var add = t.closest("[data-qc-add]");
+      if (add) { e.stopPropagation(); qcEditing = "__new__"; refreshQuickCheckinPanel(); return; }
+      // 管理开关
+      if (t.closest("#qcManageBtn")) { qcManage = !qcManage; qcEditing = null; refreshQuickCheckinPanel(); return; }
+      // 编辑器按钮
+      if (t.closest("#qcSaveBtn")) { saveQuickCheckin(); return; }
+      if (t.closest("#qcCancelBtn")) { qcEditing = null; refreshQuickCheckinPanel(); return; }
+      var emo = t.closest("[data-emoji]");
+      if (emo) { var ii = document.getElementById("qcIcon"); if (ii) ii.value = emo.dataset.emoji; return; }
+
+      // 打卡项：非管理模式下点击切换
+      var itemEl = t.closest(".checkin-item");
+      if (itemEl && !itemEl.classList.contains("qc-add") && !qcManage) {
+        var module = itemEl.dataset.module;
+        var key = itemEl.dataset.key;
         var newState = MelodiDB.toggleCheckin(module, key);
-        this.classList.toggle("checked", newState);
+        itemEl.classList.toggle("checked", newState);
         App.showReminder(newState ? "打卡成功" : "已取消", newState ? "success" : "warning");
-      });
+      }
     });
   }
 
