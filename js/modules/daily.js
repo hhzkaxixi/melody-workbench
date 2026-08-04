@@ -969,7 +969,7 @@ const DailyModule = (function () {
         });
         taskInput.value = "";
         MelodiDB.clearDraft("taskInput");
-        renderQuadrants();
+        refreshQuadrant(quad);
       };
       addBtn.addEventListener("click", addTask);
       taskInput.addEventListener("keydown", function (e) { if (e.key === "Enter") addTask(); });
@@ -993,41 +993,40 @@ const DailyModule = (function () {
 
   var QUAD_LABEL = { q1: "重要紧急", q2: "重要不紧急", q3: "紧急不重要", q4: "不重要不紧急" };
 
-  /* 按四象限分区渲染今日未完成任务 */
-  function renderQuadrants() {
-    var grid = document.getElementById("quadrantGrid");
-    if (!grid) return;
+  /* 排序：进行中优先 → 手动拖拽顺序 */
+  function sortTasks(list) {
+    list.sort(function (a, b) {
+      var da = a.status === "doing" ? 0 : 1;
+      var db = b.status === "doing" ? 0 : 1;
+      if (da !== db) return da - db;
+      var oa = typeof a.order === "number" ? a.order : 0;
+      var ob = typeof b.order === "number" ? b.order : 0;
+      return oa - ob;
+    });
+    return list;
+  }
+
+  /* 只重绘某一个象限（受影响的那一格），不碰其它格 */
+  function refreshQuadrant(q) {
+    var c = document.getElementById("quad-" + q);
+    if (!c) return;
     var todayKey = MelodiDB.todayKey();
-    var tasks = MelodiDB.getList("tasks").filter(function (t) {
-      return (!t.date || t.date === todayKey) && !t.done;
+    var list = MelodiDB.getList("tasks").filter(function (t) {
+      return (!t.date || t.date === todayKey) && !t.done && (t.quadrant || "q2") === q;
     });
-    var groups = { q1: [], q2: [], q3: [], q4: [] };
-    tasks.forEach(function (t) {
-      var q = t.quadrant || "q2";
-      if (!groups[q]) q = "q2";
-      groups[q].push(t);
-    });
-    ["q1", "q2", "q3", "q4"].forEach(function (q) {
-      var list = groups[q];
-      // 排序：进行中优先 → 手动拖拽顺序
-      list.sort(function (a, b) {
-        var da = a.status === "doing" ? 0 : 1;
-        var db = b.status === "doing" ? 0 : 1;
-        if (da !== db) return da - db;
-        var oa = typeof a.order === "number" ? a.order : 0;
-        var ob = typeof b.order === "number" ? b.order : 0;
-        return oa - ob;
-      });
-      var c = document.getElementById("quad-" + q);
-      if (!c) return;
-      if (list.length === 0) {
-        c.innerHTML = '<div class="quad-empty">—</div>';
-      } else {
-        c.innerHTML = list.map(renderTaskItem).join("");
-      }
-      bindTaskEvents(c);
-      bindTaskDrag(c);
-    });
+    sortTasks(list);
+    if (list.length === 0) {
+      c.innerHTML = '<div class="quad-empty">—</div>';
+    } else {
+      c.innerHTML = list.map(renderTaskItem).join("");
+    }
+    bindTaskEvents(c);
+    bindTaskDrag(c);
+  }
+
+  /* 按四象限分区渲染今日未完成任务（初始渲染用，逐格刷新） */
+  function renderQuadrants() {
+    ["q1", "q2", "q3", "q4"].forEach(refreshQuadrant);
   }
 
   /* 单个任务卡片（按象限简化：去掉能量/优先级/预计时长显示） */
@@ -1049,11 +1048,13 @@ const DailyModule = (function () {
   }
 
   function bindTaskEvents(container) {
-    // 完成任务：即时反馈 + 撒花奖励
+    // 完成任务：即时反馈 + 撒花奖励，只移除这一条（不重绘整格）
     container.querySelectorAll(".task-checkbox").forEach(function (cb) {
       cb.addEventListener("click", function () {
         var id = this.dataset.id;
         var item = this.closest(".task-item");
+        var task = MelodiDB.getList("tasks").filter(function (t) { return t.id === id; })[0];
+        var q = task ? (task.quadrant || "q2") : null;
         MelodiDB.updateInList("tasks", id, {
           done: true, status: "done", completedAt: new Date().toISOString(),
         });
@@ -1063,13 +1064,18 @@ const DailyModule = (function () {
           MelodiADHD.celebrate(null, item || this);
         }
         setTimeout(function () {
-          renderQuadrants();
+          // 只动这一条：从 DOM 移除，并在整格清空时补占位符
+          if (item && item.parentNode) item.remove();
+          var c = q ? document.getElementById("quad-" + q) : null;
+          if (c && c.querySelectorAll(".task-item").length === 0) {
+            c.innerHTML = '<div class="quad-empty">—</div>';
+          }
           renderTaskHistory();
         }, 400);
       });
     });
 
-    // 三态切换：待办 ⇄ 进行中
+    // 三态切换：待办 ⇄ 进行中，只更新这一条
     container.querySelectorAll("[data-toggle]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var id = this.getAttribute("data-toggle");
@@ -1078,7 +1084,25 @@ const DailyModule = (function () {
         var next = task.status === "doing" ? "todo" : "doing";
         MelodiDB.updateInList("tasks", id, { status: next });
         if (next === "doing" && window.MelodiADHD) MelodiADHD.play("tick");
-        renderQuadrants();
+        // 原地刷新这一条：状态样式、按钮图标、徽标
+        var item = this.closest(".task-item");
+        if (item) {
+          item.classList.toggle("doing", next === "doing");
+          this.textContent = next === "doing" ? "⏸" : "▶";
+          this.title = next === "doing" ? "标记为待办" : "标记为进行中";
+          var meta = item.querySelector(".task-meta");
+          if (meta) {
+            var badge = meta.querySelector(".status-badge");
+            if (next === "doing" && !badge) {
+              var b = document.createElement("span");
+              b.className = "status-badge doing";
+              b.textContent = "进行中";
+              meta.appendChild(b);
+            } else if (next === "todo" && badge) {
+              badge.remove();
+            }
+          }
+        }
       });
     });
 
@@ -1093,7 +1117,7 @@ const DailyModule = (function () {
           MelodiADHD.toast("「" + task.text + "」预计时间到，收个尾吧", "warning");
         });
         MelodiADHD.toast("倒计时开始：" + (task.estMin || 25) + " 分钟", "info");
-        renderQuadrants();
+        refreshQuadrant(task.quadrant || "q2");
       });
     });
 
@@ -1101,9 +1125,16 @@ const DailyModule = (function () {
       del.addEventListener("click", function (e) {
         e.stopPropagation();
         var id = this.dataset.id;
+        var item = this.closest(".task-item");
         if (window.MelodiADHD) MelodiADHD.stopCountdown("task_" + id);
         MelodiDB.removeFromList("tasks", id);
-        renderQuadrants();
+        // 只移这一条，整格清空时补占位符
+        var parent = item ? item.parentNode : null;
+        if (item) item.remove();
+        if (parent && parent.classList.contains("quadrant-tasks") && parent.querySelectorAll(".task-item").length === 0) {
+          parent.innerHTML = '<div class="quad-empty">—</div>';
+        }
+        renderTaskHistory();
       });
     });
   }
@@ -1124,7 +1155,8 @@ const DailyModule = (function () {
         container.querySelectorAll(".task-item").forEach(function (i) { i.classList.remove("drag-over"); });
         dragging = null;
         persistOrder(container);
-        renderQuadrants();
+        // 只重绘拖拽所在的那一格
+        refreshQuadrant(container.id.replace("quad-", ""));
       });
 
       item.addEventListener("dragover", function (e) {
