@@ -310,10 +310,14 @@ const BodyModule = (function () {
       }
     });
 
+    var ftItems = getFoodTherapyItems();
+    var ftCheckedToday = ftItems.filter(function (f) { return isFoodTherapyChecked(f.id); }).length;
+
     html += '<div class="stat-grid">';
     wellnessItems.forEach(function (w) {
       html += statCard(counts[w.key] + "天", w.label.replace("饭后", "").replace("早起", "").replace("睡前", ""));
     });
+    html += '<div class="stat-card"><div class="stat-value" id="ftStatValue">' + ftCheckedToday + "/" + ftItems.length + '</div><div class="stat-label">今日食补</div></div>';
     html += "</div>";
 
     // 打卡区
@@ -332,6 +336,17 @@ const BodyModule = (function () {
 
     html += "</div>";
 
+    // 食补打卡（自定义添加/删减）
+    html += '<div class="card">';
+    html += '<div class="card-header"><div class="card-title">🍲 食补打卡（自定义）</div>';
+    html += '<span class="muted">添加你的食补方，如：红枣银耳羹、山药排骨汤</span></div>';
+    html += '<div id="foodTherapyList"></div>';
+    html += '<div class="flex gap-sm" style="margin-top:10px;">';
+    html += '<input type="text" class="form-input" id="foodTherapyInput" placeholder="添加食补方，如：当归鸡汤">';
+    html += '<button class="btn btn-primary btn-sm" id="addFoodTherapyBtn">添加</button>';
+    html += "</div>";
+    html += "</div>";
+
     // 月度图表
     html += '<div class="card">';
     html += '<div class="card-header"><div class="card-title">养生习惯月度完成率</div></div>';
@@ -339,6 +354,92 @@ const BodyModule = (function () {
     html += "</div>";
 
     return html;
+  }
+
+  /* ===== 食补打卡（自定义添加/删减，存于 list:foodTherapy）===== */
+  function getFoodTherapyItems() {
+    return MelodiDB.getList("foodTherapy");
+  }
+
+  function isFoodTherapyChecked(id) {
+    var d = MelodiDB.getDayData("wellness") || {};
+    return !!(d.foodTherapy && d.foodTherapy[id]);
+  }
+
+  function toggleFoodTherapy(id) {
+    var d = MelodiDB.getDayData("wellness") || {};
+    if (!d.foodTherapy) d.foodTherapy = {};
+    d.foodTherapy[id] = !d.foodTherapy[id];
+    MelodiDB.setDayData("wellness", d);
+    return d.foodTherapy[id];
+  }
+
+  function updateFoodTherapyStat() {
+    var el = document.getElementById("ftStatValue");
+    if (!el) return;
+    var items = getFoodTherapyItems();
+    var checked = items.filter(function (f) { return isFoodTherapyChecked(f.id); }).length;
+    el.textContent = checked + "/" + items.length;
+  }
+
+  function renderFoodTherapyList() {
+    var container = document.getElementById("foodTherapyList");
+    if (!container) return;
+    var items = getFoodTherapyItems();
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state-text" style="padding:10px;text-align:center;">还没有食补方，下面添加一个吧～</div>';
+      updateFoodTherapyStat();
+      return;
+    }
+    container.innerHTML = items.map(function (f) {
+      var checked = isFoodTherapyChecked(f.id);
+      return '<div class="checkin-row ft-row' + (checked ? " checked" : "") + '" data-id="' + f.id + '">' +
+        '<span class="checkin-row-icon">' + (f.icon || "🍲") + "</span>" +
+        '<div class="checkin-row-info"><div class="checkin-row-label">' + escapeHtml(f.label) + "</div></div>" +
+        '<div class="checkin-row-status">' + (checked ? "已补" : "打卡") + "</div>" +
+        '<div class="task-delete ft-delete" data-id="' + f.id + '" title="删除">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>' +
+        "</div></div>";
+    }).join("");
+
+    updateFoodTherapyStat();
+
+    container.querySelectorAll(".ft-row").forEach(function (row) {
+      row.addEventListener("click", function () {
+        var id = this.dataset.id;
+        var newState = toggleFoodTherapy(id);
+        this.classList.toggle("checked", newState);
+        var st = this.querySelector(".checkin-row-status");
+        if (st) st.textContent = newState ? "已补" : "打卡";
+        if (window.MelodiADHD && newState) MelodiADHD.play("tick");
+        App.showReminder(newState ? "食补打卡成功" : "已取消", newState ? "success" : "warning");
+      });
+    });
+    container.querySelectorAll(".ft-delete").forEach(function (del) {
+      del.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var id = this.dataset.id;
+        MelodiDB.removeFromList("foodTherapy", id);
+        renderFoodTherapyList();
+        App.showReminder("已删除该食补方", "warning");
+      });
+    });
+  }
+
+  function bindFoodTherapy() {
+    var input = document.getElementById("foodTherapyInput");
+    var addBtn = document.getElementById("addFoodTherapyBtn");
+    if (!input || !addBtn) return;
+    var add = function () {
+      var text = input.value.trim();
+      if (!text) return;
+      MelodiDB.addToList("foodTherapy", { label: text, icon: "🍲" });
+      input.value = "";
+      renderFoodTherapyList();
+      App.showReminder("已添加食补方：" + text, "success");
+    };
+    addBtn.addEventListener("click", add);
+    input.addEventListener("keydown", function (e) { if (e.key === "Enter") add(); });
   }
 
   /* ===== 休闲习惯 ===== */
@@ -596,6 +697,10 @@ const BodyModule = (function () {
     // 灵感收纳（随手记，已并入休闲习惯页）
     bindInspCapture();
 
+    // 食补打卡（自定义添加/删减）
+    bindFoodTherapy();
+    renderFoodTherapyList();
+
     // 初始化观影列表（显示已有记录）
     renderMovieList();
 
@@ -775,6 +880,7 @@ const BodyModule = (function () {
     var supplementData = [];
     var ginsengData = [];
     var footbathData = [];
+    var foodTherapyData = [];
     for (var i = 1; i <= currentDay; i++) {
       labels.push((now.getMonth() + 1) + "/" + i);
       var dateKey = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(i).padStart(2, "0");
@@ -782,12 +888,15 @@ const BodyModule = (function () {
       supplementData.push(d && d.checkins && d.checkins.supplement ? 1 : 0);
       ginsengData.push(d && d.checkins && d.checkins.ginseng ? 1 : 0);
       footbathData.push(d && d.checkins && d.checkins.footbath ? 1 : 0);
+      var ft = (d && d.foodTherapy) ? d.foodTherapy : {};
+      foodTherapyData.push(Object.keys(ft).filter(function (k) { return ft[k]; }).length);
     }
 
     MelodiCharts.barChart("wellnessChart", labels, [
       { label: "保健品", data: supplementData, color: MelodiCharts.colors.primary },
       { label: "红参元", data: ginsengData, color: MelodiCharts.colors.orange },
       { label: "泡脚", data: footbathData, color: MelodiCharts.colors.purple },
+      { label: "食补", data: foodTherapyData, color: MelodiCharts.colors.teal },
     ]);
   }
 

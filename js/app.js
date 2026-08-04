@@ -1259,6 +1259,23 @@ const App = (function () {
     }
   }
 
+  /* ===== 跨天自动刷新 ===== */
+  // App 开着跨过 0 点后，自动归档昨日任务并把「今日安排 / 今日任务」刷新到新的一天（每天重置为空白新篇）
+  var lastSeenDay = MelodiDB.todayKey();
+  function checkDailyRefresh() {
+    var t = MelodiDB.todayKey();
+    if (t === lastSeenDay) return;
+    lastSeenDay = t;
+    if (typeof DailyModule !== "undefined" && DailyModule.archiveYesterdayTasks) {
+      DailyModule.archiveYesterdayTasks();
+    }
+    var route = Sidebar.getCurrentRoute();
+    if (route === "dashboard" || route === "planning") {
+      renderPage(route);
+      App.showReminder("已跨天，今日安排已刷新为新的一天", "info");
+    }
+  }
+
   /* ===== 工具 ===== */
   function escapeHtml(str) {
     if (!str) return "";
@@ -1279,7 +1296,7 @@ const App = (function () {
     var route = Sidebar.getCurrentRoute();
     renderPage(route);
     Sidebar.syncTitle(route); // 刷新后根据当前路由校正顶部标题
-    setInterval(checkReminders, 60000);
+    setInterval(function () { checkReminders(); checkDailyRefresh(); }, 60000);
     // 在线/离线状态监听
     window.addEventListener("online", function () {
       if (MelodiDB.isSupabaseConnected()) {

@@ -371,6 +371,12 @@
   color: var(--color-danger);
 }
 
+/* 食补打卡：删除按钮常驻可见（移动端无 hover，需直接可点） */
+.ft-delete {
+  opacity: 1;
+  flex-shrink: 0;
+}
+
 /* 历史折叠 */
 .history-section {
   margin-top: var(--space-lg);
