@@ -317,6 +317,13 @@
   margin-left: 52px;
 }
 
+.target-hint {
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--text-tertiary);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
 /* ========== 精力标签 ========== */
 .energy-tags {
   display: flex;

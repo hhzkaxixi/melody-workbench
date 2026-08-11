@@ -556,11 +556,29 @@ const BodyModule = (function () {
 
   /* ===== 事件绑定 ===== */
   /* ===== 体重追踪 ===== */
+  // 读取目标区间（kg）；首次运行写入默认 42.5–47.5kg（= 85–95 斤）
+  function getTargetRange() {
+    var s = MelodiDB.getSettings();
+    var min = s.targetWeightMin;
+    var max = s.targetWeightMax;
+    if (min == null || max == null) {
+      // 此前若设过单值目标（非系统默认 50），以其为中线生成 ±2.5 区间；否则用 85–95 斤默认
+      if (s.targetWeight && s.targetWeight !== 50 && s.targetWeight > 0) {
+        min = +(s.targetWeight - 2.5).toFixed(1);
+        max = +(s.targetWeight + 2.5).toFixed(1);
+      } else {
+        min = 42.5; max = 47.5;
+      }
+      MelodiDB.setSettings({ targetWeightMin: min, targetWeightMax: max });
+    }
+    return { min: min, max: max };
+  }
+
   function renderWeightSection() {
     var weightData = MelodiDB.getList("weightRecords");
     var latest = weightData.length > 0 ? weightData[0] : null;
-    var settings = MelodiDB.getSettings();
-    var targetWeight = settings.targetWeight || 50;
+    var tr = getTargetRange();
+    var twMin = tr.min, twMax = tr.max;
 
     // 运动数据联动
     var exerciseMonthData = MelodiDB.getMonthData("exercise");
@@ -575,17 +593,33 @@ const BodyModule = (function () {
 
     var html = '<div class="stat-grid">';
     html += statCard(latest ? latest.weight + "kg" : "--", "最新体重");
-    html += statCard(targetWeight + "kg", "目标体重");
-    html += statCard(latest && latest.weight ? (latest.weight - targetWeight).toFixed(1) + "kg" : "--", "距目标");
+    html += statCard(twMin + "~" + twMax + "kg", "目标区间");
+    var distText = "--";
+    if (latest && latest.weight) {
+      if (latest.weight >= twMin && latest.weight <= twMax) distText = "已达标";
+      else if (latest.weight > twMax) distText = "-" + (latest.weight - twMax).toFixed(1) + "kg";
+      else distText = "+" + (twMin - latest.weight).toFixed(1) + "kg";
+    }
+    html += statCard(distText, "距目标");
     html += statCard(exerciseCount + "次/" + exerciseMinutes + "min", "本月运动");
     html += "</div>";
 
+    // 记录体重（仅记录当日体重，不再捆绑目标）
     html += '<div class="card"><div class="card-header"><div class="card-title">记录体重</div></div>';
     html += '<div class="form-row" style="align-items:flex-end;">';
     html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">体重 (kg)</label><input type="number" class="form-input" id="weightInput" placeholder="如 52.5" step="0.1" style="width:120px;"></div>';
-    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">设置目标</label><input type="number" class="form-input" id="targetWeightInput" value="' + targetWeight + '" step="0.5" style="width:100px;"></div>';
     html += '<button class="btn btn-primary" id="saveWeightBtn">记录</button>';
-    html += "</div></div>";
+    html += "</div>";
+    html += '<div class="target-hint">1 斤 = 0.5 kg，直接填 kg 即可</div></div>';
+
+    // 目标体重（区间，可独立保存，不再依赖记录按钮）
+    html += '<div class="card"><div class="card-header"><div class="card-title">目标体重</div></div>';
+    html += '<div class="form-row" style="align-items:flex-end;">';
+    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">下限 (kg)</label><input type="number" class="form-input" id="targetMinInput" value="' + twMin + '" step="0.5" style="width:90px;"></div>';
+    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">上限 (kg)</label><input type="number" class="form-input" id="targetMaxInput" value="' + twMax + '" step="0.5" style="width:90px;"></div>';
+    html += '<button class="btn btn-primary" id="saveTargetBtn">保存目标</button>';
+    html += "</div>";
+    html += '<div class="target-hint">目标区间 ' + twMin + "–" + twMax + " kg ≈ " + Math.round(twMin * 2) + "–" + Math.round(twMax * 2) + " 斤</div></div>";
 
     html += '<div class="card"><div class="card-header"><div class="card-title">体重变化曲线</div></div>';
     html += '<div class="chart-canvas-wrap"><canvas id="weightChart"></canvas></div></div>';
@@ -657,23 +691,36 @@ const BodyModule = (function () {
       });
     }
 
-    // 记录体重（内联在运动规划面板内，就地刷新）
+    // 记录体重（仅记录当日体重）
     var saveWeightBtn = document.getElementById("saveWeightBtn");
     if (saveWeightBtn) {
       saveWeightBtn.addEventListener("click", function () {
         var input = document.getElementById("weightInput");
-        var targetInput = document.getElementById("targetWeightInput");
         var w = parseFloat(input.value);
-        var tw = parseFloat(targetInput.value);
-        if (tw && tw > 20 && tw < 200) {
-          MelodiDB.setSettings({ targetWeight: tw });
-        }
         if (!w || w < 20 || w > 200) {
-          App.showReminder("请输入合理的体重", "warning");
+          App.showReminder("请输入合理的体重(20-200kg)", "warning");
           return;
         }
         MelodiDB.addToList("weightRecords", { weight: w, date: MelodiDB.todayKey() });
         App.showReminder("体重已记录", "success");
+        refreshFitnessPanel("exercise");
+      });
+    }
+    // 保存目标体重区间（独立按钮，不再依赖记录体重）
+    var saveTargetBtn = document.getElementById("saveTargetBtn");
+    if (saveTargetBtn) {
+      saveTargetBtn.addEventListener("click", function () {
+        var minEl = document.getElementById("targetMinInput");
+        var maxEl = document.getElementById("targetMaxInput");
+        var mn = parseFloat(minEl.value);
+        var mx = parseFloat(maxEl.value);
+        if (!mn || !mx || mn < 20 || mx < 20 || mn > 200 || mx > 200) {
+          App.showReminder("请输入合理区间(20-200kg)", "warning");
+          return;
+        }
+        if (mn > mx) { var t = mn; mn = mx; mx = t; }
+        MelodiDB.setSettings({ targetWeightMin: +mn.toFixed(1), targetWeightMax: +mx.toFixed(1) });
+        App.showReminder("目标已更新 " + mn + "–" + mx + "kg", "success");
         refreshFitnessPanel("exercise");
       });
     }
@@ -758,23 +805,36 @@ const BodyModule = (function () {
           App.showReminder("链接已保存", "success");
         });
       }
-      // 记录体重（内联，就地刷新整个运动规划面板）
+      // 记录体重（仅记录当日体重）
       var saveWeightBtn = document.getElementById("saveWeightBtn");
       if (saveWeightBtn) {
         saveWeightBtn.addEventListener("click", function () {
           var input = document.getElementById("weightInput");
-          var targetInput = document.getElementById("targetWeightInput");
           var w = parseFloat(input.value);
-          var tw = parseFloat(targetInput.value);
-          if (tw && tw > 20 && tw < 200) {
-            MelodiDB.setSettings({ targetWeight: tw });
-          }
           if (!w || w < 20 || w > 200) {
-            App.showReminder("请输入合理的体重", "warning");
+            App.showReminder("请输入合理的体重(20-200kg)", "warning");
             return;
           }
           MelodiDB.addToList("weightRecords", { weight: w, date: MelodiDB.todayKey() });
           App.showReminder("体重已记录", "success");
+          refreshFitnessPanel("exercise");
+        });
+      }
+      // 保存目标体重区间（独立按钮）
+      var saveTargetBtn = document.getElementById("saveTargetBtn");
+      if (saveTargetBtn) {
+        saveTargetBtn.addEventListener("click", function () {
+          var minEl = document.getElementById("targetMinInput");
+          var maxEl = document.getElementById("targetMaxInput");
+          var mn = parseFloat(minEl.value);
+          var mx = parseFloat(maxEl.value);
+          if (!mn || !mx || mn < 20 || mx < 20 || mn > 200 || mx > 200) {
+            App.showReminder("请输入合理区间(20-200kg)", "warning");
+            return;
+          }
+          if (mn > mx) { var t = mn; mn = mx; mx = t; }
+          MelodiDB.setSettings({ targetWeightMin: +mn.toFixed(1), targetWeightMax: +mx.toFixed(1) });
+          App.showReminder("目标已更新 " + mn + "–" + mx + "kg", "success");
           refreshFitnessPanel("exercise");
         });
       }
@@ -928,8 +988,7 @@ const BodyModule = (function () {
   }
 
   function renderWeightCharts() {
-    var settings = MelodiDB.getSettings();
-    var targetWeight = settings.targetWeight || 50;
+    var tr = getTargetRange();
     var exerciseMonthData = MelodiDB.getMonthData("exercise");
     var weightData = MelodiDB.getList("weightRecords");
     var records = weightData.slice().reverse();
@@ -939,7 +998,8 @@ const BodyModule = (function () {
     var wData = records.map(function (r) { return r.weight; });
     MelodiCharts.lineChart("weightChart", wLabels, [
       { label: "体重", data: wData, color: MelodiCharts.colors.primary, fillColor: MelodiCharts.colors.primaryBg },
-      { label: "目标", data: wLabels.map(function () { return targetWeight; }), color: MelodiCharts.colors.green, fill: false, borderWidth: 1, borderDash: [5, 5] },
+      { label: "目标下限", data: wLabels.map(function () { return tr.min; }), color: MelodiCharts.colors.green, fill: false },
+      { label: "目标上限", data: wLabels.map(function () { return tr.max; }), color: MelodiCharts.colors.green, fill: false },
     ]);
 
     // 身材变化趋势（本月每日体重 vs 运动时长）
