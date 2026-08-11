@@ -556,19 +556,24 @@ const BodyModule = (function () {
 
   /* ===== 事件绑定 ===== */
   /* ===== 体重追踪 ===== */
-  // 读取目标区间（kg）；首次运行写入默认 42.5–47.5kg（= 85–95 斤）
+  // 读取目标体重区间（目标带，kg）；落在 min~max 区间内即视为达标。
+  // 首次运行写入默认 43–48kg；v37 旧的 42.5–47.5 默认值自动升级为 43–48。
   function getTargetRange() {
     var s = MelodiDB.getSettings();
     var min = s.targetWeightMin;
     var max = s.targetWeightMax;
     if (min == null || max == null) {
-      // 此前若设过单值目标（非系统默认 50），以其为中线生成 ±2.5 区间；否则用 85–95 斤默认
+      // 此前若设过单值目标（非系统默认 50），以其为中线生成 ±2.5 区间；否则用 43–48kg 默认
       if (s.targetWeight && s.targetWeight !== 50 && s.targetWeight > 0) {
         min = +(s.targetWeight - 2.5).toFixed(1);
         max = +(s.targetWeight + 2.5).toFixed(1);
       } else {
-        min = 42.5; max = 47.5;
+        min = 43; max = 48;
       }
+      MelodiDB.setSettings({ targetWeightMin: min, targetWeightMax: max });
+    } else if (min === 42.5 && max === 47.5) {
+      // v37 旧默认 42.5–47.5 升级为用户指定的 43–48 目标带
+      min = 43; max = 48;
       MelodiDB.setSettings({ targetWeightMin: min, targetWeightMax: max });
     }
     return { min: min, max: max };
@@ -612,14 +617,17 @@ const BodyModule = (function () {
     html += "</div>";
     html += '<div class="target-hint">1 斤 = 0.5 kg，直接填 kg 即可</div></div>';
 
-    // 目标体重（区间，可独立保存，不再依赖记录按钮）
-    html += '<div class="card"><div class="card-header"><div class="card-title">目标体重</div></div>';
+    // 目标体重区间（目标带：落在 min~max 区间内即视为达标，不再用「上限/下限」约束式叫法）
+    html += '<div class="card"><div class="card-header"><div class="card-title">目标体重区间</div></div>';
     html += '<div class="form-row" style="align-items:flex-end;">';
-    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">下限 (kg)</label><input type="number" class="form-input" id="targetMinInput" value="' + twMin + '" step="0.5" style="width:90px;"></div>';
-    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">上限 (kg)</label><input type="number" class="form-input" id="targetMaxInput" value="' + twMax + '" step="0.5" style="width:90px;"></div>';
+    html += '<div class="form-group" style="margin-bottom:0;"><label class="form-label">目标区间 (kg)</label><div style="display:flex;align-items:center;gap:6px;">';
+    html += '<input type="number" class="form-input" id="targetMinInput" value="' + twMin + '" step="0.5" style="width:72px;">';
+    html += '<span style="color:#B0A0A0;">~</span>';
+    html += '<input type="number" class="form-input" id="targetMaxInput" value="' + twMax + '" step="0.5" style="width:72px;">';
+    html += '</div></div>';
     html += '<button class="btn btn-primary" id="saveTargetBtn">保存目标</button>';
     html += "</div>";
-    html += '<div class="target-hint">目标区间 ' + twMin + "–" + twMax + " kg ≈ " + Math.round(twMin * 2) + "–" + Math.round(twMax * 2) + " 斤</div></div>";
+    html += '<div class="target-hint">落在 ' + twMin + "–" + twMax + " kg（≈ " + Math.round(twMin * 2) + "–" + Math.round(twMax * 2) + ' 斤）区间内即视为「已达标」</div></div>';
 
     html += '<div class="card"><div class="card-header"><div class="card-title">体重变化曲线</div></div>';
     html += '<div class="chart-canvas-wrap"><canvas id="weightChart"></canvas></div></div>';
@@ -997,9 +1005,9 @@ const BodyModule = (function () {
     var wLabels = records.map(function (r) { return r.date ? r.date.substring(5) : ""; });
     var wData = records.map(function (r) { return r.weight; });
     MelodiCharts.lineChart("weightChart", wLabels, [
+      { label: "目标区间下限", data: wLabels.map(function () { return tr.min; }), color: MelodiCharts.colors.green, fill: false, borderWidth: 1, borderDash: [4, 4] },
+      { label: "目标区间上限", data: wLabels.map(function () { return tr.max; }), color: MelodiCharts.colors.green, fill: { target: 0 }, fillColor: "rgba(76,175,80,0.14)", borderWidth: 1, borderDash: [4, 4] },
       { label: "体重", data: wData, color: MelodiCharts.colors.primary, fillColor: MelodiCharts.colors.primaryBg },
-      { label: "目标下限", data: wLabels.map(function () { return tr.min; }), color: MelodiCharts.colors.green, fill: false },
-      { label: "目标上限", data: wLabels.map(function () { return tr.max; }), color: MelodiCharts.colors.green, fill: false },
     ]);
 
     // 身材变化趋势（本月每日体重 vs 运动时长）
